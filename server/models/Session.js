@@ -1,34 +1,43 @@
 import mongoose from "mongoose";
 
 const CharacterSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  role: { type: String, required: true },
-  personality: { type: String, required: true },
+  name: { type: String, required: true, trim: true },
+  role: { type: String, required: true, trim: true },
+  personality: { type: String, required: true, trim: true },
   isActive: { type: Boolean, default: true }
 });
 
+const BlockSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["narration", "dialogue"],
+      required: true
+    },
+    speaker: { type: String, default: "" },
+    text: { type: String, required: true }
+  },
+  { _id: false }
+);
+
 const MessageSchema = new mongoose.Schema({
-  sender: { type: String, enum: ["user", "ai"], required: true },
-  // For user messages
+  sender: {
+    type: String,
+    enum: ["user", "ai"],
+    required: true
+  },
   rawInput: { type: String, default: "" },
   isSkipTurn: { type: Boolean, default: false },
-  // For AI responses (and score snapshot at this exact turn)
-  loveScore: { type: Number, required: true },
-  hateScore: { type: Number, required: true },
+  loveScore: { type: Number, required: true, min: 0, max: 100 },
+  hateScore: { type: Number, required: true, min: 0, max: 100 },
   loveDelta: { type: Number, default: 0 },
-  blocks: [
-    {
-      type: { type: String, enum: ["narration", "dialogue"], required: true },
-      speaker: { type: String, default: "" },
-      text: { type: String, required: true }
-    }
-  ],
+  blocks: [BlockSchema],
   createdAt: { type: Date, default: Date.now }
 });
 
 const SessionSchema = new mongoose.Schema(
   {
-    playerName: { type: String, required: true },
+    playerName: { type: String, required: true, trim: true },
     love: { type: Number, default: 0, min: 0, max: 100 },
     hate: { type: Number, default: 100, min: 0, max: 100 },
     storySummary: {
