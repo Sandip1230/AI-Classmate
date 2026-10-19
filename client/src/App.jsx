@@ -65,7 +65,7 @@ const LEGAL_CONTENT = {
       },
       {
         title: "How information is used and shared",
-        text: "The app uses session information to run and resume your story. To generate replies and story summaries, it sends your current message and relevant context—including your player name, recent conversation, story summary, character details, and game state—to Google's Gemini AI service. Google processes that information under its own terms and privacy practices."
+        text: "The app uses session information to run and resume your story. To generate replies and story summaries, it sends your current message and relevant context—including your player name, recent conversation, story summary, character details, and game state—to Google's Gemini AI service using the Gemini API key you provide. Your key is kept in this browser tab's session storage and sent to the app server only with AI-generation requests; the server does not save it. Google processes your key and submitted story information under its own terms and privacy practices."
       },
       {
         title: "Storage location and service providers",
@@ -144,9 +144,22 @@ function LegalDialog({ documentType, onClose }) {
 }
 
 async function requestSession(path, options) {
+  const requiresAiKey = /\/(?:message|edit-last|regenerate)$/.test(path);
+  const apiKey = requiresAiKey
+    ? sessionStorage.getItem("ai_classmate_gemini_api_key")
+    : null;
+  const requestOptions = requiresAiKey
+    ? {
+        ...options,
+        headers: {
+          ...options.headers,
+          ...(apiKey ? { "X-Gemini-Api-Key": apiKey } : {})
+        }
+      }
+    : options;
   let response;
   try {
-    response = await fetch(`${API_BASE}${path}`, options);
+    response = await fetch(`${API_BASE}${path}`, requestOptions);
   } catch {
     throw new Error("Can't reach the game server. Check that the server is running.");
   }
@@ -234,6 +247,105 @@ function renderUserMessageWithActions(rawText) {
   });
 }
 
+function ApiKeyDialog({ currentKey, onClose, onSave, onRemove }) {
+  const [draft, setDraft] = useState(currentKey);
+  const [showKey, setShowKey] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!draft.trim()) {
+      setFormError("Enter a Gemini API key to save it.");
+      return;
+    }
+    onSave(draft.trim());
+  };
+
+  return (
+    <div
+      className="contact-overlay api-key-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="legal-dialog api-key-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="api-key-title"
+      >
+        <header className="legal-dialog-header">
+          <div>
+            <p className="legal-brand">AI-Classmate</p>
+            <h2 id="api-key-title">Your Gemini API key</h2>
+            <p className="legal-updated">
+              {currentKey ? "A key is saved in this browser tab." : "No key saved yet."}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="legal-close"
+            aria-label="Close API key settings"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </header>
+        <form className="api-key-form" onSubmit={handleSubmit}>
+          <label htmlFor="gemini-api-key">Google AI Studio API key</label>
+          <div className="api-key-input-row">
+            <input
+              id="gemini-api-key"
+              type={showKey ? "text" : "password"}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setFormError("");
+              }}
+              placeholder="Paste your Gemini API key"
+            />
+            <button type="button" onClick={() => setShowKey((visible) => !visible)}>
+              {showKey ? "Hide" : "Show"}
+            </button>
+          </div>
+          <p className="api-key-note">
+            Your key is used for your Gemini requests, so usage counts against
+            your Google project. It is stored only in this browser tab and sent
+            to this app&apos;s server over the network for each AI reply. The
+            server does not save it. Only enter it on a deployment you trust;
+            use HTTPS outside local development.
+            {" "}
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Get a key from Google AI Studio
+            </a>
+          </p>
+          {formError && <p className="api-key-error" role="alert">{formError}</p>}
+          <div className="api-key-actions">
+            {currentKey && (
+              <button type="button" className="api-key-remove" onClick={onRemove}>
+                Remove key
+              </button>
+            )}
+            <button type="button" className="api-key-cancel" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="api-key-save">
+              Save key
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [playerNameInput, setPlayerNameInput] = useState("");
@@ -256,6 +368,10 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState(
+    () => sessionStorage.getItem("ai_classmate_gemini_api_key") || ""
+  );
   const [legalDocument, setLegalDocument] = useState(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [theme, setTheme] = useState("dark");
@@ -359,6 +475,11 @@ export default function App() {
   const handleSend = async (isSkip = false) => {
     if (loading) return;
     if (!isSkip && !messageInput.trim()) return;
+    if (!geminiApiKey) {
+      setApiKeyDialogOpen(true);
+      setError("Add your Gemini API key to generate a reply.");
+      return;
+    }
 
     const textToSend = messageInput;
     if (!isSkip) setMessageInput("");
@@ -381,6 +502,11 @@ export default function App() {
 
   const handleSaveEdit = async () => {
     if (!editDraft.trim() || loading) return;
+    if (!geminiApiKey) {
+      setApiKeyDialogOpen(true);
+      setError("Add your Gemini API key to regenerate a reply.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -399,6 +525,11 @@ export default function App() {
 
   const handleRegenerate = async () => {
     if (loading) return;
+    if (!geminiApiKey) {
+      setApiKeyDialogOpen(true);
+      setError("Add your Gemini API key to regenerate a reply.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -464,6 +595,24 @@ export default function App() {
     setDrawerOpen(false);
     setIsEditingLast(false);
   };
+
+  const apiKeyDialog = apiKeyDialogOpen ? (
+    <ApiKeyDialog
+      currentKey={geminiApiKey}
+      onClose={() => setApiKeyDialogOpen(false)}
+      onSave={(key) => {
+        sessionStorage.setItem("ai_classmate_gemini_api_key", key);
+        setGeminiApiKey(key);
+        setApiKeyDialogOpen(false);
+        setError("");
+      }}
+      onRemove={() => {
+        sessionStorage.removeItem("ai_classmate_gemini_api_key");
+        setGeminiApiKey("");
+        setApiKeyDialogOpen(false);
+      }}
+    />
+  ) : null;
 
   // --- ONBOARDING SCREEN (No Hardcoded Name) ---
   if (!session) {
@@ -608,6 +757,7 @@ export default function App() {
           documentType={legalDocument}
           onClose={() => setLegalDocument(null)}
         />
+        {apiKeyDialog}
       </div>
     );
   }
@@ -718,6 +868,17 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="settings-link"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setApiKeyDialogOpen(true);
+                    }}
+                  >
+                    Gemini API key {geminiApiKey ? "· Saved" : "· Not set"}
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
@@ -1193,6 +1354,7 @@ export default function App() {
           documentType={legalDocument}
           onClose={() => setLegalDocument(null)}
         />
+        {apiKeyDialog}
       </div>
     </div>
   );

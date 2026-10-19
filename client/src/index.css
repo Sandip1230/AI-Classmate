@@ -914,6 +914,10 @@
   backdrop-filter: blur(5px);
 }
 
+.api-key-overlay {
+  z-index: 50;
+}
+
 .contact-card {
   position: relative;
   width: min(360px, 100%);
@@ -1198,6 +1202,90 @@
   font-size: 14px;
 }
 
+.api-key-dialog {
+  width: min(520px, 100%);
+}
+
+.api-key-form {
+  display: grid;
+  gap: 12px;
+  padding: 20px 24px 24px;
+}
+
+.api-key-form > label {
+  color: #eeeaf7;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.api-key-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.api-key-input-row input {
+  min-width: 0;
+  flex: 1;
+  padding: 11px 12px;
+  color: #eeeaf7;
+  background: #10111b;
+  border: 1px solid rgba(190, 180, 228, 0.25);
+  border-radius: 9px;
+}
+
+.api-key-input-row button,
+.api-key-actions button {
+  padding: 9px 12px;
+  color: #eeeaf7;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(190, 180, 228, 0.18);
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.api-key-input-row button:hover,
+.api-key-actions button:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.api-key-note,
+.api-key-error {
+  margin: 0;
+  color: #aaa5bb;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.api-key-note a {
+  color: #c6aceb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.api-key-error {
+  color: #ff9da9;
+}
+
+.api-key-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.api-key-actions .api-key-remove {
+  margin-right: auto;
+  color: #f0a0ac;
+}
+
+.api-key-actions .api-key-save {
+  color: #fff;
+  background: #7456ce;
+  border-color: #7456ce;
+}
+
 .legal-content p {
   margin: 0;
   color: #c2bdcf;
@@ -1407,6 +1495,41 @@
 .app-shell[data-theme="light"] .legal-close:hover {
   color: #302d40;
   background: rgba(48, 45, 64, 0.08);
+}
+
+.app-shell[data-theme="light"] .api-key-form > label {
+  color: #302d40;
+}
+
+.app-shell[data-theme="light"] .api-key-input-row input {
+  color: #302d40;
+  background: #f4f1f8;
+  border-color: #d9d3e5;
+}
+
+.app-shell[data-theme="light"] .api-key-input-row button,
+.app-shell[data-theme="light"] .api-key-actions button {
+  color: #302d40;
+  background: #f0edf6;
+  border-color: #d9d3e5;
+}
+
+.app-shell[data-theme="light"] .api-key-actions .api-key-save {
+  color: #fff;
+  background: #65459b;
+}
+
+.app-shell[data-theme="light"] .api-key-note {
+  color: #625d70;
+}
+
+.app-shell[data-theme="light"] .api-key-note a {
+  color: #65459b;
+}
+
+.app-shell[data-theme="light"] .api-key-error,
+.app-shell[data-theme="light"] .api-key-actions .api-key-remove {
+  color: #a82e47;
 }
 
 @keyframes message-appear {
@@ -1703,6 +1826,10 @@
 
   .legal-dialog-header {
     padding: 18px 18px 13px;
+  }
+
+  .api-key-form {
+    padding: 16px 18px 20px;
   }
 
   .legal-content {

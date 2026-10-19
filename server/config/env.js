@@ -9,10 +9,6 @@ export function getServerConfig(env = process.env) {
   if (!env.MONGO_URI?.trim()) {
     throw new Error("MONGO_URI is required.");
   }
-  if (!env.GEMINI_API_KEY?.trim()) {
-    throw new Error("GEMINI_API_KEY is required.");
-  }
-
   const trustProxy = env.TRUST_PROXY ?? "0";
   if (!/^(0|[1-9]\d*|loopback|linklocal|uniquelocal)$/.test(trustProxy)) {
     throw new Error(
@@ -43,7 +39,6 @@ export function getServerConfig(env = process.env) {
   return {
     port,
     mongoUri: env.MONGO_URI.trim(),
-    geminiApiKey: env.GEMINI_API_KEY.trim(),
     geminiModel: env.GEMINI_MODEL?.trim() || "gemini-3.8-flash",
     nodeEnv: env.NODE_ENV || "development",
     trustProxy: trustProxyHopCount ?? trustProxy,

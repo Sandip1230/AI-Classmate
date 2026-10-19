@@ -43,7 +43,7 @@ export function createApp({ clientOrigins, trustProxy } = {}) {
         callback(null, !origin || allowedOrigins.includes(origin));
       },
       methods: ["GET", "POST", "PUT", "OPTIONS"],
-      allowedHeaders: ["Content-Type"],
+      allowedHeaders: ["Content-Type", "X-Gemini-Api-Key"],
       maxAge: 600
     })
   );

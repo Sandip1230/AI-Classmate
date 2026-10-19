@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 const roleplayResponseSchema = {
@@ -49,7 +48,7 @@ const roleplayResponseSchema = {
   required: ["loveDelta", "reasonForDelta", "blocks"]
 };
 
-export async function generateRoleplayTurn({ session, userRawText, isSkip }) {
+export async function generateRoleplayTurn({ session, userRawText, isSkip, apiKey }) {
   const friendName = session.friendName || "Isha";
   const friendGender = session.friendGender || "girl";
   const friendTitle = friendGender === "girl" ? "Queen" : "King";
@@ -132,6 +131,7 @@ ${
 }
 `;
 
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: MODEL_NAME,
     contents: prompt,
@@ -189,7 +189,7 @@ ${
   };
 }
 
-export async function updateRollingSummaryIfNeeded(session) {
+export async function updateRollingSummaryIfNeeded(session, apiKey) {
   if (session.messages.length < 20 || session.messages.length % 10 !== 0) return;
 
   const sliceToSummarize = session.messages.slice(-12).map((m) => {
@@ -203,6 +203,7 @@ export async function updateRollingSummaryIfNeeded(session) {
   const friendName = session.friendName || "Isha";
 
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const res = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: `Update the running roleplay summary concisely (under 180 words), preserving key plot twists, current location in Xavier's College, relationship shifts with ${friendName}, and active NPC dynamics.\n\nPrevious Summary:\n${session.storySummary}\n\nRecent Events:\n${sliceToSummarize.join("\n")}`
@@ -212,6 +213,7 @@ export async function updateRollingSummaryIfNeeded(session) {
       await session.save();
     }
   } catch (err) {
-    console.error("⚠️ Rolling summary update skipped:", err.message);
+    const message = String(err?.message || "Unknown error").split(apiKey).join("[redacted]");
+    console.error("Rolling summary update skipped:", message);
   }
 }

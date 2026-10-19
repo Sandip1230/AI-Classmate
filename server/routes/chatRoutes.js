@@ -19,8 +19,74 @@ function isValidSessionId(id) {
   return /^[a-f\d]{24}$/i.test(id);
 }
 
+function getUserApiKey(req, res) {
+  const apiKey = req.get("X-Gemini-Api-Key");
+  if (typeof apiKey !== "string" || !apiKey.trim() || apiKey.length > 512) {
+    res.status(400).json({
+      error: "Add a valid Gemini API key in Chat options before generating a reply."
+    });
+    return null;
+  }
+  return apiKey.trim();
+}
+
+export function getAiProviderError(error) {
+  const status = Number(error?.status ?? error?.statusCode);
+  const providerMessage = String(error?.message || "").toLowerCase();
+
+  if (/api.?key|unauthorized|permission denied|credential/.test(providerMessage)) {
+    return {
+      status: 502,
+      message: "Gemini rejected this API key. Use a key created in Google AI Studio and confirm the Gemini API is enabled for its project."
+    };
+  }
+  if (status === 401 || status === 403) {
+    return {
+      status: 502,
+      message: "Gemini denied access. Check that your Google AI Studio key is valid and has Gemini API access."
+    };
+  }
+  if (status === 404) {
+    return {
+      status: 502,
+      message: "The configured Gemini model was not found or is unavailable to this key. Check GEMINI_MODEL in the server environment."
+    };
+  }
+  if (status === 429) {
+    return {
+      status: 429,
+      message: "Gemini quota or rate limit reached for this key. Check its Google AI Studio project limits and try again later."
+    };
+  }
+  if (status >= 500) {
+    return {
+      status: 502,
+      message: "Gemini is temporarily unavailable. Please try again shortly."
+    };
+  }
+  if (status === 400) {
+    return {
+      status: 502,
+      message: "Gemini rejected the request. Check the configured model and try again."
+    };
+  }
+  return {
+    status: 502,
+    message: "Unable to reach Gemini. Check your connection and try again."
+  };
+}
+
+function sendAiRouteError(res, label, error, apiKey) {
+  const details = String(error?.message || "Unknown error")
+    .split(apiKey || "\u0000")
+    .join("[redacted]");
+  console.error(label, error?.name || "Error", details);
+  const providerError = getAiProviderError(error);
+  return res.status(providerError.status).json({ error: providerError.message });
+}
+
 function sendRouteError(res, label, error, message) {
-  console.error(label, error);
+  console.error(label, error?.name || "Error", error?.message || "Unknown error");
   return res.status(500).json({ error: message });
 }
 
@@ -173,6 +239,8 @@ router.post("/:id/message", async (req, res) => {
         error: `Message must contain 1 to ${MAX_MESSAGE_LENGTH} characters.`
       });
     }
+    const apiKey = getUserApiKey(req, res);
+    if (!apiKey) return;
 
     const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ error: "Session not found" });
@@ -197,7 +265,8 @@ router.post("/:id/message", async (req, res) => {
     const aiTurn = await generateRoleplayTurn({
       session,
       userRawText: text || "",
-      isSkip: Boolean(isSkip)
+      isSkip: Boolean(isSkip),
+      apiKey
     });
 
     session.love = aiTurn.loveScore;
@@ -212,15 +281,15 @@ router.post("/:id/message", async (req, res) => {
     });
 
     await session.save();
-    updateRollingSummaryIfNeeded(session);
+    updateRollingSummaryIfNeeded(session, apiKey);
 
     res.json(session);
   } catch (err) {
-    sendRouteError(
+    sendAiRouteError(
       res,
       "Message Turn Error:",
       err,
-      "Unable to generate a reply. Please try again."
+      req.get("X-Gemini-Api-Key")
     );
   }
 });
@@ -241,6 +310,8 @@ router.put("/:id/edit-last", async (req, res) => {
         error: `Edited message must contain 1 to ${MAX_MESSAGE_LENGTH} characters.`
       });
     }
+    const apiKey = getUserApiKey(req, res);
+    if (!apiKey) return;
 
     const session = await Session.findById(req.params.id);
     if (!session || session.messages.length < 3) {
@@ -267,7 +338,8 @@ router.put("/:id/edit-last", async (req, res) => {
     const aiTurn = await generateRoleplayTurn({
       session,
       userRawText: newText,
-      isSkip: false
+      isSkip: false,
+      apiKey
     });
 
     session.love = aiTurn.loveScore;
@@ -284,11 +356,11 @@ router.put("/:id/edit-last", async (req, res) => {
     await session.save();
     res.json(session);
   } catch (err) {
-    sendRouteError(
+    sendAiRouteError(
       res,
       "Edit Last Turn Error:",
       err,
-      "Unable to update the message. Please try again."
+      req.get("X-Gemini-Api-Key")
     );
   }
 });
@@ -299,6 +371,8 @@ router.post("/:id/regenerate", async (req, res) => {
     if (!isValidSessionId(req.params.id)) {
       return res.status(400).json({ error: "Session ID is invalid." });
     }
+    const apiKey = getUserApiKey(req, res);
+    if (!apiKey) return;
     const session = await Session.findById(req.params.id);
     if (!session || session.messages.length < 3) {
       return res
@@ -315,7 +389,8 @@ router.post("/:id/regenerate", async (req, res) => {
     const aiTurn = await generateRoleplayTurn({
       session,
       userRawText: lastUserMsg.rawInput,
-      isSkip: lastUserMsg.isSkipTurn
+      isSkip: lastUserMsg.isSkipTurn,
+      apiKey
     });
 
     session.love = aiTurn.loveScore;
@@ -332,11 +407,11 @@ router.post("/:id/regenerate", async (req, res) => {
     await session.save();
     res.json(session);
   } catch (err) {
-    sendRouteError(
+    sendAiRouteError(
       res,
       "Regenerate Turn Error:",
       err,
-      "Unable to regenerate the reply. Please try again."
+      req.get("X-Gemini-Api-Key")
     );
   }
 });

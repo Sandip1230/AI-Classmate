@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import test from "node:test";
 
-process.env.GEMINI_API_KEY ||= "test-only-api-key";
-
 const { createApp } = await import("../app.js");
+const { getAiProviderError } = await import("../routes/chatRoutes.js");
 
 async function withServer(callback) {
   const server = createApp({
@@ -44,7 +43,7 @@ test("allows only configured browser origins", async () => {
       headers: {
         Origin: "https://classmate.example.com",
         "Access-Control-Request-Method": "POST",
-        "Access-Control-Request-Headers": "content-type"
+        "Access-Control-Request-Headers": "content-type,x-gemini-api-key"
       }
     });
     const denied = await fetch(`${baseUrl}/api/session/init`, {
@@ -60,6 +59,10 @@ test("allows only configured browser origins", async () => {
       allowed.headers.get("access-control-allow-origin"),
       "https://classmate.example.com"
     );
+    assert.match(
+      allowed.headers.get("access-control-allow-headers"),
+      /x-gemini-api-key/i
+    );
     assert.equal(denied.headers.get("access-control-allow-origin"), null);
   });
 });
@@ -69,6 +72,25 @@ test("validates API input and returns JSON for unknown routes", async () => {
     const missingBody = await fetch(`${baseUrl}/api/session/init`, {
       method: "POST"
     });
+    const missingApiKey = await fetch(
+      `${baseUrl}/api/session/0123456789abcdef01234567/message`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "Hello" })
+      }
+    );
+    const oversizedApiKey = await fetch(
+      `${baseUrl}/api/session/0123456789abcdef01234567/message`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Gemini-Api-Key": "k".repeat(513)
+        },
+        body: JSON.stringify({ text: "Hello" })
+      }
+    );
     const invalidSession = await fetch(`${baseUrl}/api/session/not-an-id/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -98,6 +120,9 @@ test("validates API input and returns JSON for unknown routes", async () => {
     const unknownBody = await unknown.json();
 
     assert.equal(missingBody.status, 400);
+    assert.equal(missingApiKey.status, 400);
+    assert.match((await missingApiKey.json()).error, /Gemini API key/);
+    assert.equal(oversizedApiKey.status, 400);
     assert.equal(invalidSession.status, 400);
     assert.equal(invalidGender.status, 400);
     assert.equal(oversizedName.status, 400);
@@ -112,6 +137,25 @@ test("returns client errors for malformed and oversized JSON", async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "{"
+    });
+
+    test("explains common Gemini API failures without exposing provider error details", () => {
+      assert.match(
+        getAiProviderError({ status: 400, message: "API key not valid" }).message,
+        /key created in Google AI Studio/
+      );
+      assert.match(
+        getAiProviderError({ status: 404, message: "not found" }).message,
+        /GEMINI_MODEL/
+      );
+      assert.equal(
+        getAiProviderError({ status: 429, message: "quota exceeded" }).status,
+        429
+      );
+      assert.doesNotMatch(
+        getAiProviderError({ status: 400, message: "API key secret-value" }).message,
+        /secret-value/
+      );
     });
     const oversized = await fetch(`${baseUrl}/api/session/init`, {
       method: "POST",

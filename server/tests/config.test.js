@@ -4,7 +4,6 @@ import { getServerConfig } from "../config/env.js";
 
 const validEnv = {
   MONGO_URI: "mongodb://localhost:27017/ai-classmate",
-  GEMINI_API_KEY: "test-api-key",
   CLIENT_ORIGINS: "https://classmate.example.com, http://localhost:5173"
 };
 
@@ -21,14 +20,10 @@ test("loads deployment configuration and defaults", () => {
   ]);
 });
 
-test("rejects missing secrets and invalid ports", () => {
+test("rejects missing database configuration and invalid ports", () => {
   assert.throws(
     () => getServerConfig({ ...validEnv, MONGO_URI: " " }),
     /MONGO_URI is required/
-  );
-  assert.throws(
-    () => getServerConfig({ ...validEnv, GEMINI_API_KEY: "" }),
-    /GEMINI_API_KEY is required/
   );
   assert.throws(
     () => getServerConfig({ ...validEnv, PORT: "70000" }),

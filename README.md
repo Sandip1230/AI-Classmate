@@ -12,8 +12,7 @@ generates replies.
 
 ## Setup
 
-1. Copy `server/.env.example` to `server/.env` and set `MONGO_URI` and
-   `GEMINI_API_KEY`.
+1. Copy `server/.env.example` to `server/.env` and set `MONGO_URI`.
 2. Install and start the API:
 
    ```sh
@@ -41,12 +40,11 @@ Build the client with `npm ci && npm run build` from `client`, and publish
 `client/dist`. Run `npm ci && npm start` from `server`.
 
 Configure these server environment variables in the hosting provider; never
-commit real credentials:
+commit database credentials:
 
 - `NODE_ENV=production`
 - `PORT` (provided by most hosting services)
 - `MONGO_URI` (MongoDB connection URI; restrict database network access)
-- `GEMINI_API_KEY` (server-side Google AI Studio key)
 - `GEMINI_MODEL` (optional; defaults to `gemini-3.8-flash`)
 - `CLIENT_ORIGINS` (comma-separated exact origins, e.g. `https://classmate.example.com`; do not include paths or trailing slashes)
 - `TRUST_PROXY` (default `0`; set to the exact trusted proxy hop count only when the host sits behind a proxy)
@@ -65,6 +63,16 @@ IDs currently act as bearer capabilities: anyone who obtains an ID can access
 that session. This app does not provide user accounts or identity-based access
 control, so do not store sensitive conversations or expose session IDs in logs
 or publicly shared URLs. Add authentication before using it for private data.
+
+Each user must provide their own Google AI Studio Gemini API key in the chat
+options before generating replies. AI calls—including periodic story-summary
+updates—use that user's key, so Gemini usage is charged to their Google project
+rather than a shared operator key. The key stays in that browser tab's
+`sessionStorage` and is sent to the API only with AI-generation requests. The
+server does not save it, but can access it while processing requests; deploy
+over HTTPS and make sure users trust the server. Users create/manage their key
+through Google AI Studio, and Google account/project quotas and billing still
+apply.
 
 ## Validation
 
