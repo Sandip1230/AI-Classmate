@@ -6,6 +6,23 @@ import {
 } from "../services/geminiService.js";
 
 const router = express.Router();
+const MAX_PLAYER_NAME_LENGTH = 40;
+const MAX_FRIEND_NAME_LENGTH = 40;
+const MAX_MESSAGE_LENGTH = 2_000;
+const MAX_CHARACTER_NAME_LENGTH = 80;
+const MAX_CHARACTER_ROLE_LENGTH = 120;
+const MAX_CHARACTER_PERSONALITY_LENGTH = 500;
+const MAX_CUSTOM_CHARACTERS = 50;
+const MAX_SESSION_MESSAGES = 1_000;
+
+function isValidSessionId(id) {
+  return /^[a-f\d]{24}$/i.test(id);
+}
+
+function sendRouteError(res, label, error, message) {
+  console.error(label, error);
+  return res.status(500).json({ error: message });
+}
 
 function createDefaultCharacters(friendName, friendGender) {
   const title = friendGender === "girl" ? "Queen" : "King";
@@ -50,9 +67,12 @@ router.post("/init", async (req, res) => {
       playerGender = "male",
       friendName = "Isha",
       friendGender = "girl"
-    } = req.body;
+    } = req.body ?? {};
 
     if (sessionId) {
+      if (typeof sessionId !== "string" || !isValidSessionId(sessionId)) {
+        return res.status(400).json({ error: "Session ID is invalid." });
+      }
       const existing = await Session.findById(sessionId);
       if (existing) return res.json(existing);
     }
@@ -64,8 +84,10 @@ router.post("/init", async (req, res) => {
     }
 
     const cleanName = playerName.trim();
-    if (cleanName.length > 40) {
-      return res.status(400).json({ error: "Player name must be 40 characters or fewer." });
+    if (cleanName.length > MAX_PLAYER_NAME_LENGTH) {
+      return res.status(400).json({
+        error: `Player name must be ${MAX_PLAYER_NAME_LENGTH} characters or fewer.`
+      });
     }
     if (!["male", "female", "nonbinary"].includes(playerGender)) {
       return res.status(400).json({ error: "Choose a valid player gender." });
@@ -74,8 +96,10 @@ router.post("/init", async (req, res) => {
       return res.status(400).json({ error: "AI friend name is required." });
     }
     const cleanFriendName = friendName.trim();
-    if (cleanFriendName.length > 40) {
-      return res.status(400).json({ error: "AI friend name must be 40 characters or fewer." });
+    if (cleanFriendName.length > MAX_FRIEND_NAME_LENGTH) {
+      return res.status(400).json({
+        error: `AI friend name must be ${MAX_FRIEND_NAME_LENGTH} characters or fewer.`
+      });
     }
     if (!["boy", "girl"].includes(friendGender)) {
       return res.status(400).json({ error: "Choose whether your AI friend is a boy or a girl." });
@@ -127,17 +151,36 @@ router.post("/init", async (req, res) => {
 
     res.status(201).json(newSession);
   } catch (err) {
-    console.error("Init Session Error:", err);
-    res.status(500).json({ error: err.message });
+    sendRouteError(res, "Init Session Error:", err, "Unable to start a session.");
   }
 });
 
 // 2. Send Message OR Skip Turn
 router.post("/:id/message", async (req, res) => {
   try {
-    const { text, isSkip } = req.body;
+    const { text, isSkip } = req.body ?? {};
+    if (!isValidSessionId(req.params.id)) {
+      return res.status(400).json({ error: "Session ID is invalid." });
+    }
+    if (isSkip !== undefined && typeof isSkip !== "boolean") {
+      return res.status(400).json({ error: "isSkip must be a boolean." });
+    }
+    if (
+      !isSkip &&
+      (typeof text !== "string" || !text.trim() || text.length > MAX_MESSAGE_LENGTH)
+    ) {
+      return res.status(400).json({
+        error: `Message must contain 1 to ${MAX_MESSAGE_LENGTH} characters.`
+      });
+    }
+
     const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ error: "Session not found" });
+    if (session.messages.length + 2 > MAX_SESSION_MESSAGES) {
+      return res.status(409).json({
+        error: "This story has reached its message limit. Start a new story to continue."
+      });
+    }
 
     const userMsg = {
       sender: "user",
@@ -173,15 +216,32 @@ router.post("/:id/message", async (req, res) => {
 
     res.json(session);
   } catch (err) {
-    console.error("Message Turn Error:", err);
-    res.status(500).json({ error: err.message });
+    sendRouteError(
+      res,
+      "Message Turn Error:",
+      err,
+      "Unable to generate a reply. Please try again."
+    );
   }
 });
 
 // 3. Edit Last User Message & Regenerate
 router.put("/:id/edit-last", async (req, res) => {
   try {
-    const { newText } = req.body;
+    const { newText } = req.body ?? {};
+    if (!isValidSessionId(req.params.id)) {
+      return res.status(400).json({ error: "Session ID is invalid." });
+    }
+    if (
+      typeof newText !== "string" ||
+      !newText.trim() ||
+      newText.length > MAX_MESSAGE_LENGTH
+    ) {
+      return res.status(400).json({
+        error: `Edited message must contain 1 to ${MAX_MESSAGE_LENGTH} characters.`
+      });
+    }
+
     const session = await Session.findById(req.params.id);
     if (!session || session.messages.length < 3) {
       return res.status(400).json({ error: "No editable user turn found." });
@@ -224,14 +284,21 @@ router.put("/:id/edit-last", async (req, res) => {
     await session.save();
     res.json(session);
   } catch (err) {
-    console.error("Edit Last Turn Error:", err);
-    res.status(500).json({ error: err.message });
+    sendRouteError(
+      res,
+      "Edit Last Turn Error:",
+      err,
+      "Unable to update the message. Please try again."
+    );
   }
 });
 
 // 4. Regenerate Last AI Response
 router.post("/:id/regenerate", async (req, res) => {
   try {
+    if (!isValidSessionId(req.params.id)) {
+      return res.status(400).json({ error: "Session ID is invalid." });
+    }
     const session = await Session.findById(req.params.id);
     if (!session || session.messages.length < 3) {
       return res
@@ -265,34 +332,62 @@ router.post("/:id/regenerate", async (req, res) => {
     await session.save();
     res.json(session);
   } catch (err) {
-    console.error("Regenerate Turn Error:", err);
-    res.status(500).json({ error: err.message });
+    sendRouteError(
+      res,
+      "Regenerate Turn Error:",
+      err,
+      "Unable to regenerate the reply. Please try again."
+    );
   }
 });
 
 // 5. Add Custom Character to Active World
 router.post("/:id/characters", async (req, res) => {
   try {
-    const { name, role, personality } = req.body;
-    if (!name || !role) {
-      return res.status(400).json({ error: "Name and role are required." });
+    const { name, role, personality } = req.body ?? {};
+    if (!isValidSessionId(req.params.id)) {
+      return res.status(400).json({ error: "Session ID is invalid." });
+    }
+    if (
+      typeof name !== "string" ||
+      !name.trim() ||
+      name.length > MAX_CHARACTER_NAME_LENGTH ||
+      typeof role !== "string" ||
+      !role.trim() ||
+      role.length > MAX_CHARACTER_ROLE_LENGTH ||
+      (personality !== undefined &&
+        (typeof personality !== "string" ||
+          personality.length > MAX_CHARACTER_PERSONALITY_LENGTH))
+    ) {
+      return res.status(400).json({
+        error: `Character name (1-${MAX_CHARACTER_NAME_LENGTH}), role (1-${MAX_CHARACTER_ROLE_LENGTH}), and personality (up to ${MAX_CHARACTER_PERSONALITY_LENGTH}) must be valid.`
+      });
     }
 
     const session = await Session.findById(req.params.id);
     if (!session) return res.status(404).json({ error: "Session not found" });
+    if (session.characters.length >= MAX_CUSTOM_CHARACTERS + 4) {
+      return res.status(409).json({
+        error: "This story has reached its custom character limit."
+      });
+    }
 
     session.characters.push({
       name: name.trim(),
       role: role.trim(),
-      personality: (personality || "Dynamic college character").trim(),
+      personality: personality?.trim() || "Dynamic college character",
       isActive: true
     });
 
     await session.save();
     res.json(session);
   } catch (err) {
-    console.error("Add Character Error:", err);
-    res.status(500).json({ error: err.message });
+    sendRouteError(
+      res,
+      "Add Character Error:",
+      err,
+      "Unable to add the character. Please try again."
+    );
   }
 });
 
