@@ -87,10 +87,11 @@ ${activeNPCs}
 - **-1 or -2**: ${session.playerName} acts needy, apologetic without reason, boring, or overly submissive.
 
 ### OUTPUT STRUCTURE
-- Provide 2 to 4 \`blocks\` alternating between \`narration\` (3rd-person atmospheric description addressing the player as "tum" / "tumhara") and \`dialogue\` (spoken lines by Isha and/or other present NPCs).
+- Provide 2 or 3 \`blocks\` alternating between \`narration\` (3rd-person atmospheric description addressing the player as "tum" / "tumhara") and \`dialogue\` (spoken lines by Isha and/or other present NPCs).
+- Keep each turn concise: use 2 or 3 blocks and no more than 100 words total.
 `;
 
-  const recentMessages = session.messages.slice(-16).map((m) => {
+  const recentMessages = session.messages.slice(-10).map((m) => {
     if (m.sender === "user") {
       return `${session.playerName}: ${
         m.isSkipTurn
@@ -129,7 +130,8 @@ ${
       systemInstruction,
       responseMimeType: "application/json",
       responseSchema: roleplayResponseSchema,
-      temperature: 0.85
+      temperature: 0.85,
+      maxOutputTokens: 512
     }
   });
 

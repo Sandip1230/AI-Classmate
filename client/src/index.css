@@ -348,10 +348,17 @@
   margin: 0 auto;
 }
 
+.composer-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
 .composer-input {
+  width: 100%;
   min-width: 0;
   min-height: 48px;
-  padding: 12px 17px;
+  padding: 12px 54px 12px 17px;
   color: #f0edf8;
   background: rgba(255, 255, 255, 0.065);
   border: 1px solid rgba(190, 180, 228, 0.15);
@@ -367,6 +374,95 @@
   background: rgba(255, 255, 255, 0.085);
   border-color: rgba(177, 145, 238, 0.6);
   outline: none;
+}
+
+.emoji-toggle {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: #ded5ef;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 20px;
+  transform: translateY(-50%);
+  transition: background 160ms ease;
+}
+
+.emoji-toggle:hover,
+.emoji-toggle[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.emoji-keyboard {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 25;
+  width: min(360px, calc(100vw - 32px));
+  padding: 10px;
+  color: #eeeaf7;
+  background: #1a1b2a;
+  border: 1px solid rgba(190, 180, 228, 0.2);
+  border-radius: 15px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+}
+
+.emoji-keyboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 3px 9px;
+  color: #aaa5bb;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.emoji-keyboard-header button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: #aaa5bb;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.emoji-keyboard-header button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+  max-height: min(255px, 42vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.emoji-option {
+  display: grid;
+  min-width: 0;
+  min-height: 38px;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 21px;
+}
+
+.emoji-option:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .skip-button {
@@ -560,6 +656,132 @@
   overflow-wrap: anywhere;
 }
 
+.legal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 5, 12, 0.76);
+  backdrop-filter: blur(6px);
+}
+
+.legal-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  max-height: min(82dvh, 760px);
+  overflow: hidden;
+  color: #eeeaf7;
+  background: #171827;
+  border: 1px solid rgba(190, 180, 228, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 24px 75px rgba(0, 0, 0, 0.48);
+}
+
+.legal-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid rgba(190, 180, 228, 0.13);
+}
+
+.legal-brand,
+.legal-updated {
+  margin: 0;
+  color: #aaa5bb;
+  font-size: 11px;
+}
+
+.legal-brand {
+  margin-bottom: 5px;
+  color: #c6aceb;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.legal-dialog-header h2 {
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 22px;
+}
+
+.legal-close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #aaa5bb;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.legal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.legal-content {
+  padding: 8px 24px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.legal-content section {
+  margin-top: 16px;
+}
+
+.legal-content h3 {
+  margin: 0 0 5px;
+  color: #e4d5fa;
+  font-size: 14px;
+}
+
+.legal-content p {
+  margin: 0;
+  color: #c2bdcf;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.legal-content a {
+  display: inline-block;
+  margin-top: 7px;
+  color: #c6aceb;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.onboarding-legal-links {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 16px 18px;
+  color: #aaa5bb;
+  font-size: 12px;
+}
+
+.onboarding-legal-links button {
+  padding: 3px;
+  color: #c6aceb;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.onboarding-legal-links button:hover {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .app-shell[data-theme="light"] {
   color: #27243a;
   background: #e9e6f1;
@@ -640,6 +862,26 @@
   color: white;
 }
 
+.app-shell[data-theme="light"] .emoji-keyboard {
+  color: #302d40;
+  background: #fbfaff;
+  border-color: #d9d3e5;
+}
+
+.app-shell[data-theme="light"] .emoji-keyboard-header,
+.app-shell[data-theme="light"] .emoji-keyboard-header button {
+  color: #6b6579;
+}
+
+.app-shell[data-theme="light"] .emoji-keyboard-header button:hover {
+  color: #302d40;
+  background: rgba(48, 45, 64, 0.08);
+}
+
+.app-shell[data-theme="light"] .emoji-option:hover {
+  background: rgba(48, 45, 64, 0.08);
+}
+
 .app-shell[data-theme="light"] .cast-button,
 .app-shell[data-theme="light"] .menu-trigger {
   color: #5d4388;
@@ -671,6 +913,40 @@
 .app-shell[data-theme="light"] .contact-player {
   background: #f0edf6;
   border-color: #d9d3e5;
+}
+
+.app-shell[data-theme="light"] .legal-dialog {
+  color: #302d40;
+  background: #fbfaff;
+  border-color: #d9d3e5;
+}
+
+.app-shell[data-theme="light"] .legal-dialog-header {
+  border-color: #e2ddec;
+}
+
+.app-shell[data-theme="light"] .legal-dialog-header h2 {
+  color: #302d40;
+}
+
+.app-shell[data-theme="light"] .legal-brand,
+.app-shell[data-theme="light"] .legal-content h3,
+.app-shell[data-theme="light"] .legal-content a {
+  color: #65459b;
+}
+
+.app-shell[data-theme="light"] .legal-updated,
+.app-shell[data-theme="light"] .legal-content p {
+  color: #625d70;
+}
+
+.app-shell[data-theme="light"] .legal-close {
+  color: #6b6579;
+}
+
+.app-shell[data-theme="light"] .legal-close:hover {
+  color: #302d40;
+  background: rgba(48, 45, 64, 0.08);
 }
 
 @keyframes message-appear {
@@ -784,8 +1060,18 @@
 
   .composer-input {
     min-height: 44px;
-    padding: 10px 12px;
+    padding: 10px 49px 10px 12px;
     font-size: 13px;
+  }
+
+  .emoji-toggle {
+    right: 5px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .emoji-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
   .send-button {
@@ -805,6 +1091,14 @@
     font-size: 10px;
   }
 
+  .emoji-keyboard {
+    width: min(320px, calc(100vw - 24px));
+  }
+
+  .emoji-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
   .player-badge {
     max-width: 104px;
   }
@@ -822,6 +1116,37 @@
   .composer-hint code,
   .composer-hint em {
     font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .legal-overlay {
+    padding: 10px;
+  }
+
+  .legal-dialog {
+    max-height: 90dvh;
+    border-radius: 16px;
+  }
+
+  .legal-dialog-header {
+    padding: 18px 18px 13px;
+  }
+
+  .legal-content {
+    padding: 4px 18px 20px;
+  }
+}
+
+@media (pointer: coarse) {
+  .emoji-option {
+    min-height: 42px;
+    font-size: 23px;
+  }
+
+  .emoji-toggle {
+    width: 40px;
+    height: 40px;
   }
 }
 
