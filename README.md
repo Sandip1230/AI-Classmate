@@ -185,6 +185,10 @@ All routes are prefixed with `/api`.
 | `POST` | `/api/auth/google` | Verifies a Google ID token and creates a sign-in session. |
 | `GET` | `/api/auth/me` | Returns the currently signed-in account. |
 | `POST` | `/api/auth/logout` | Revokes the current sign-in session and expires its cookie. |
+| `DELETE` | `/api/auth/account` | Deletes the signed-in account, its saved stories, and all sign-in sessions. |
+
+Account deletion is permanent and does not delete or change the associated
+Google account.
 
 ### Stories
 

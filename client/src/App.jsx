@@ -406,6 +406,10 @@ export default function App() {
   const [contactOpen, setContactOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState("");
+  const [deleteAccountError, setDeleteAccountError] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState(
     () => sessionStorage.getItem("ai_classmate_gemini_api_key") || ""
   );
@@ -798,6 +802,40 @@ export default function App() {
     setIsEditingLast(false);
   };
 
+  const openDeleteAccount = () => {
+    setMenuOpen(false);
+    setDeleteAccountConfirmation("");
+    setDeleteAccountError("");
+    setDeleteAccountOpen(true);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteAccountConfirmation !== "DELETE" || deletingAccount) return;
+    setDeletingAccount(true);
+    setDeleteAccountError("");
+    try {
+      await requestApi("/auth/account", { method: "DELETE" });
+      localStorage.removeItem("xaviers_session_id");
+      sessionStorage.removeItem("ai_classmate_gemini_api_key");
+      setGeminiApiKey("");
+      setUser(null);
+      setSavedSessions([]);
+      setSession(null);
+      setPlayerNameInput("");
+      setMessageInput("");
+      setError("");
+      setDeleteAccountOpen(false);
+      setDeleteAccountConfirmation("");
+      setProfileOpen(false);
+      setDrawerOpen(false);
+      setIsEditingLast(false);
+    } catch (requestError) {
+      setDeleteAccountError(requestError.message);
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   const apiKeyDialog = apiKeyDialogOpen ? (
     <ApiKeyDialog
       currentKey={geminiApiKey}
@@ -954,7 +992,12 @@ export default function App() {
               <div className="account-strip">
                 {user.picture && <img src={user.picture} alt="" referrerPolicy="no-referrer" />}
                 <span>Signed in as <strong>{user.name}</strong><br />{user.email}</span>
-                <button type="button" onClick={handleSignOut}>Sign out</button>
+                <div className="account-strip-actions">
+                  <button type="button" onClick={handleSignOut}>Sign out</button>
+                  <button type="button" className="account-delete-button" onClick={openDeleteAccount}>
+                    Delete account
+                  </button>
+                </div>
               </div>
               {savedSessions.length > 0 && (
                 <section className="saved-stories" aria-labelledby="saved-stories-title">
@@ -1238,6 +1281,14 @@ export default function App() {
                     onClick={handleSignOut}
                   >
                     Sign out
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="settings-link settings-link-danger"
+                    onClick={openDeleteAccount}
+                  >
+                    Delete account
                   </button>
                   <button
                     type="button"
@@ -1698,6 +1749,68 @@ export default function App() {
           documentType={legalDocument}
           onClose={() => setLegalDocument(null)}
         />
+        {deleteAccountOpen && (
+          <div
+            className="delete-account-overlay"
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !deletingAccount) {
+                setDeleteAccountOpen(false);
+              }
+            }}
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !deletingAccount) {
+                setDeleteAccountOpen(false);
+              }
+            }}
+          >
+            <section
+              className="delete-account-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-account-title"
+              aria-describedby="delete-account-description"
+            >
+              <h2 id="delete-account-title">Delete your account?</h2>
+              <p id="delete-account-description">
+                This permanently deletes your AI-Classmate account, saved stories,
+                and sign-in sessions. This cannot be undone. Your Google account
+                itself will not be affected.
+              </p>
+              <label htmlFor="delete-account-confirmation">
+                Type <strong>DELETE</strong> to confirm.
+              </label>
+              <input
+                id="delete-account-confirmation"
+                autoFocus
+                autoComplete="off"
+                value={deleteAccountConfirmation}
+                onChange={(event) => setDeleteAccountConfirmation(event.target.value)}
+                disabled={deletingAccount}
+              />
+              {deleteAccountError && (
+                <p className="delete-account-error" role="alert">{deleteAccountError}</p>
+              )}
+              <div className="delete-account-actions">
+                <button
+                  type="button"
+                  className="delete-account-cancel"
+                  disabled={deletingAccount}
+                  onClick={() => setDeleteAccountOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="delete-account-confirm"
+                  disabled={deleteAccountConfirmation !== "DELETE" || deletingAccount}
+                  onClick={handleDeleteAccount}
+                >
+                  {deletingAccount ? "Deleting…" : "Delete account"}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
         {apiKeyDialog}
       </div>
     </div>

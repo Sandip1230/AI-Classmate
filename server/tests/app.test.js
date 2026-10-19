@@ -79,6 +79,10 @@ test("requires account authentication for private stories and reports sign-in co
     const anonymousAccount = await fetch(`${baseUrl}/api/auth/me`);
     const anonymousAccountBody = await anonymousAccount.json();
     const privateStories = await fetch(`${baseUrl}/api/session`);
+    const deleteAccount = await fetch(`${baseUrl}/api/auth/account`, {
+      method: "DELETE",
+      headers: { Origin: "https://classmate.example.com" }
+    });
     const createStory = await fetch(`${baseUrl}/api/session/init`, {
       method: "POST",
       headers: {
@@ -111,6 +115,7 @@ test("requires account authentication for private stories and reports sign-in co
     assert.equal(anonymousAccount.status, 200);
     assert.deepEqual(anonymousAccountBody, { user: null });
     assert.equal(privateStories.status, 401);
+    assert.equal(deleteAccount.status, 401);
     assert.match((await privateStories.json()).error, /Sign in with Google/);
     assert.equal(createStory.status, 401);
     assert.equal(googleSignIn.status, 503);

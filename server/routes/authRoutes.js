@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import express from "express";
 import { OAuth2Client } from "google-auth-library";
 import AuthSession from "../models/AuthSession.js";
+import Session from "../models/Session.js";
 import User from "../models/User.js";
 import {
   AUTH_COOKIE_NAME,
@@ -132,6 +133,18 @@ export function createAuthRouter({
     }
     res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions(nodeEnv));
     return res.json({ ok: true });
+  });
+
+  authRouter.delete("/account", requireAuth, async (req, res, next) => {
+    try {
+      await Session.deleteMany({ ownerId: req.user._id });
+      await AuthSession.deleteMany({ userId: req.user._id });
+      await User.deleteOne({ _id: req.user._id });
+      res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions(nodeEnv));
+      return res.json({ ok: true });
+    } catch (error) {
+      return next(error);
+    }
   });
 
   return authRouter;

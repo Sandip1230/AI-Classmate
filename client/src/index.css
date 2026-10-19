@@ -972,6 +972,122 @@
   font-size: 11px;
 }
 
+.account-strip-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.account-strip .account-delete-button {
+  color: #ffc1ca;
+  border-color: rgba(239, 124, 145, 0.24);
+}
+
+.account-strip .account-delete-button:hover {
+  background: rgba(170, 48, 68, 0.18);
+}
+
+.delete-account-overlay {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(4, 5, 12, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.delete-account-dialog {
+  width: min(440px, 100%);
+  padding: 24px;
+  color: #eeeaf7;
+  background: #171827;
+  border: 1px solid rgba(239, 124, 145, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 24px 75px rgba(0, 0, 0, 0.5);
+}
+
+.delete-account-dialog h2 {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: 21px;
+}
+
+.delete-account-dialog > p,
+.delete-account-dialog label {
+  color: #c2bdcf;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.delete-account-dialog > p {
+  margin: 0 0 18px;
+}
+
+.delete-account-dialog label {
+  display: block;
+  margin-bottom: 7px;
+}
+
+.delete-account-dialog label strong {
+  color: #ffc1ca;
+  letter-spacing: 0.06em;
+}
+
+.delete-account-dialog input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(190, 180, 228, 0.2);
+  border-radius: 10px;
+}
+
+.delete-account-error {
+  margin: 9px 0 0 !important;
+  color: #ffb4bf !important;
+}
+
+.delete-account-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.delete-account-actions button {
+  min-height: 42px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.delete-account-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.delete-account-cancel {
+  color: #d7d1e2;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(190, 180, 228, 0.16) !important;
+}
+
+.delete-account-confirm {
+  color: #fff;
+  background: #9f354b;
+}
+
+.delete-account-confirm:hover:not(:disabled) {
+  background: #b64058;
+}
+
 .saved-stories {
   margin-bottom: 26px;
 }
