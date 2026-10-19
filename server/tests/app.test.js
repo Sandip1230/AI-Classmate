@@ -4,6 +4,7 @@ import test from "node:test";
 
 const { createApp } = await import("../app.js");
 const { getAiProviderError } = await import("../routes/chatRoutes.js");
+const { parseRoleplayResponse } = await import("../services/geminiService.js");
 
 async function withServer(callback) {
   const server = createApp({
@@ -180,5 +181,21 @@ test("explains common Gemini API failures without exposing provider error detail
   assert.doesNotMatch(
     getAiProviderError({ status: 400, message: "API key secret-value" }).message,
     /secret-value/
+  );
+});
+
+test("parses Gemini roleplay JSON with code fences and trailing commas", () => {
+  const response = parseRoleplayResponse(
+    '```json\n{"loveDelta":1,"reasonForDelta":"A clever reply","blocks":[{"type":"dialogue","speaker":"Isha","text":"Nice try."},],}\n```'
+  );
+  assert.equal(response.loveDelta, 1);
+  assert.equal(response.blocks[0].text, "Nice try.");
+  assert.throws(
+    () => parseRoleplayResponse('{"loveDelta":1,"blocks":[{"type":"dialogue",'),
+    SyntaxError
+  );
+  assert.throws(
+    () => parseRoleplayResponse('{"loveDelta":"many","blocks":[]}'),
+    /expected reply structure/
   );
 });

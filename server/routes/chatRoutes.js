@@ -34,6 +34,22 @@ export function getAiProviderError(error) {
   const status = Number(error?.status ?? error?.statusCode);
   const providerMessage = String(error?.message || "").toLowerCase();
 
+  if (error?.name === "GeminiResponseTruncatedError") {
+    return {
+      status: 502,
+      message: "Gemini's reply was cut off. Please try sending your message again."
+    };
+  }
+  if (
+    error instanceof SyntaxError ||
+    error instanceof TypeError &&
+      /expected reply structure|empty response|JSON object/.test(error.message)
+  ) {
+    return {
+      status: 502,
+      message: "Gemini returned an incomplete reply. Please try sending your message again."
+    };
+  }
   if (/api.?key|unauthorized|permission denied|credential/.test(providerMessage)) {
     return {
       status: 502,

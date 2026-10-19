@@ -48,6 +48,70 @@ const roleplayResponseSchema = {
   required: ["loveDelta", "reasonForDelta", "blocks"]
 };
 
+export function parseRoleplayResponse(text) {
+  if (typeof text !== "string" || !text.trim()) {
+    throw new SyntaxError("Gemini returned an empty response.");
+  }
+
+  const cleaned = text
+    .replace(/^\s*```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/, "")
+    .trim();
+  const objectStart = cleaned.indexOf("{");
+  const objectEnd = cleaned.lastIndexOf("}");
+  if (objectStart < 0 || objectEnd < objectStart) {
+    throw new SyntaxError("Gemini response did not contain a JSON object.");
+  }
+
+  const jsonText = cleaned.slice(objectStart, objectEnd + 1);
+  let normalizedJson = "";
+  let inString = false;
+  let isEscaped = false;
+  for (let index = 0; index < jsonText.length; index += 1) {
+    const character = jsonText[index];
+    if (inString) {
+      normalizedJson += character;
+      if (isEscaped) {
+        isEscaped = false;
+      } else if (character === "\\") {
+        isEscaped = true;
+      } else if (character === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (character === "\"") {
+      inString = true;
+      normalizedJson += character;
+    } else if (character === ",") {
+      let nextCharacter = index + 1;
+      while (/\s/.test(jsonText[nextCharacter] || "")) nextCharacter += 1;
+      if (!["}", "]"].includes(jsonText[nextCharacter])) normalizedJson += character;
+    } else {
+      normalizedJson += character;
+    }
+  }
+  const parsed = JSON.parse(normalizedJson);
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    !Number.isFinite(Number(parsed.loveDelta)) ||
+    !Array.isArray(parsed.blocks) ||
+    parsed.blocks.some(
+      (block) =>
+        !block ||
+        typeof block !== "object" ||
+        !["narration", "dialogue"].includes(block.type) ||
+        typeof block.text !== "string"
+    )
+  ) {
+    throw new TypeError("Gemini response did not match the expected reply structure.");
+  }
+  return parsed;
+}
+
 export async function generateRoleplayTurn({ session, userRawText, isSkip, apiKey }) {
   const friendName = session.friendName || "Isha";
   const friendGender = session.friendGender || "girl";
@@ -140,17 +204,17 @@ ${
       responseMimeType: "application/json",
       responseSchema: roleplayResponseSchema,
       temperature: 0.85,
-      maxOutputTokens: 512
+      maxOutputTokens: 1024
     }
   });
 
-  let parsed;
-  try {
-    parsed = JSON.parse(response.text);
-  } catch {
-    const cleaned = response.text.replace(/```json|```/g, "").trim();
-    parsed = JSON.parse(cleaned);
+  const finishReason = response.candidates?.[0]?.finishReason;
+  if (finishReason === "MAX_TOKENS") {
+    const error = new Error("Gemini response was truncated at the output token limit.");
+    error.name = "GeminiResponseTruncatedError";
+    throw error;
   }
+  const parsed = parseRoleplayResponse(response.text);
 
   // Enforce strict [-2, +2] clamp and Love + Hate = 100
   const rawDelta = Number(parsed.loveDelta) || 0;
