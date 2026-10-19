@@ -718,6 +718,7 @@
 }
 
 .login-landing {
+  flex-direction: column;
   height: 100vh;
   height: 100dvh;
   min-height: 0;
