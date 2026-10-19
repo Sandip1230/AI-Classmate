@@ -236,12 +236,16 @@ API service.
    npm start
    ```
 
-When the frontend and API are on different sites, configure
+For Vercel, `client/vercel.json` proxies `/api/*` requests to the configured
+Render API, keeping browser authentication same-origin. Leave
+`VITE_API_BASE_URL` unset (or set it to `/api/session`) in the Vercel project;
+an absolute API URL bypasses this proxy and may cause browsers to block the
+cross-site sign-in cookie. If you use a different hosting setup, configure
 `VITE_API_BASE_URL` in the frontend build and set `CLIENT_ORIGINS` on the API.
-Production sign-in cookies are `Secure` and use `SameSite=None`, so cross-site
-deployments require HTTPS and a browser that permits the cookie. A same-site
-deployment or a reverse proxy that serves `/api` under the frontend's origin
-is generally more compatible with browser cookie restrictions.
+Production sign-in cookies are `Secure` and use `SameSite=None`, so a direct
+cross-site deployment requires HTTPS and a browser that permits the cookie. A
+same-site deployment or proxy is more compatible with browser cookie
+restrictions.
 
 `GET /api/health` returns HTTP 200 when MongoDB is connected and HTTP 503 when
 it is not. The API also uses Helmet security headers, request-size limits,
