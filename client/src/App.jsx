@@ -243,6 +243,7 @@ export default function App() {
   const [npcPersonality, setNpcPersonality] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [legalDocument, setLegalDocument] = useState(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [theme, setTheme] = useState("dark");
@@ -431,65 +432,98 @@ export default function App() {
     });
   };
 
+  const handleSignOut = () => {
+    localStorage.removeItem("xaviers_session_id");
+    setSession(null);
+    setPlayerNameInput("");
+    setMessageInput("");
+    setError("");
+    setMenuOpen(false);
+    setProfileOpen(false);
+    setDrawerOpen(false);
+    setIsEditingLast(false);
+  };
+
   // --- ONBOARDING SCREEN (No Hardcoded Name) ---
   if (!session) {
     return (
-      <div className="onboarding-shell min-h-screen bg-[#0b141a] text-[#e9edef] flex items-center justify-center p-4">
-        <div className="onboarding-card max-w-md w-full bg-[#111b21] border border-[#2a3942] rounded-2xl overflow-hidden shadow-2xl">
-          <div className="onboarding-art relative h-60 w-full overflow-hidden">
+      <div className="onboarding-shell">
+        <main className="onboarding-card">
+          <section className="onboarding-art" aria-label="AI-Classmate story">
             <img
               src="/isha-scene.jpg"
-              alt="Xavier's College"
-              className="w-full h-full object-cover object-top"
+              alt="A glimpse of the Xavier's College story"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#111b21] via-transparent to-black/40" />
-            <div className="absolute bottom-3 left-4 right-4">
-              <span className="px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider bg-rose-600/90 text-white rounded-full">
-                AI-Classmate
-              </span>
-              <h1 className="text-2xl font-bold mt-1 text-white drop-shadow">
-                Crown of Thorns: Isha
-              </h1>
+            <div className="onboarding-art-shade" />
+            <div className="onboarding-brand">
+              <span className="onboarding-brand-mark" aria-hidden="true">A</span>
+              <span>AI-Classmate</span>
             </div>
-          </div>
+            <div className="onboarding-story-copy">
+              <span className="onboarding-story-kicker">YOUR STORY STARTS HERE</span>
+              <h1>Crown of<br />Thorns</h1>
+              <p className="onboarding-story-subtitle">A Xavier&apos;s College story</p>
+              <div className="onboarding-story-rule" />
+              <p className="onboarding-story-description">
+                New campus. Unwritten rules. One queen who doesn&apos;t make
+                things easy.
+              </p>
+              <div className="onboarding-character">
+                <span className="onboarding-character-dot" />
+                <span><strong>Isha</strong><br />Brilliant. Untouchable. Unpredictable.</span>
+              </div>
+            </div>
+          </section>
 
-          <form onSubmit={handleStartSession} className="onboarding-form p-6 space-y-4">
-            <p className="text-sm text-[#8696a0] leading-relaxed">
-              You are a new admission student walking into <strong className="text-gray-200">Xavier&apos;s College</strong>.
-              Isha—brilliant, wealthy, and fiercely arrogant—rules this campus. Nothing is scripted.
-            </p>
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-[#8696a0] mb-1.5">
-                Enter Your Name (New Admission)
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g., Aryan, Kabir, or your name..."
-                value={playerNameInput}
-                onChange={(e) => setPlayerNameInput(e.target.value)}
-                className="w-full bg-[#202c33] text-white px-4 py-3 rounded-xl border border-[#2a3942] focus:outline-none focus:border-[#00a884]"
-              />
+          <section className="onboarding-panel">
+            <div className="onboarding-panel-content">
+              <div className="onboarding-welcome">
+                <span className="onboarding-eyebrow">INTERACTIVE AI ROLEPLAY</span>
+                <h2>Step into the story.</h2>
+                <p>
+                  Choose your name. The choices, conversations, and consequences
+                  are yours to shape.
+                </p>
+              </div>
+
+              <form onSubmit={handleStartSession} className="onboarding-form">
+                <label htmlFor="player-name">What should we call you?</label>
+                <input
+                  id="player-name"
+                  type="text"
+                  required
+                  maxLength={40}
+                  autoComplete="nickname"
+                  placeholder="Enter your name"
+                  value={playerNameInput}
+                  onChange={(e) => setPlayerNameInput(e.target.value)}
+                />
+                <p className="onboarding-input-note">
+                  Your name will be used during your story.
+                </p>
+                <button type="submit" disabled={loading}>
+                  <span>{loading ? "Preparing your story..." : "Begin your story"}</span>
+                  <span aria-hidden="true">{loading ? "…" : "→"}</span>
+                </button>
+                {error && <p className="error-banner" role="alert">{error}</p>}
+              </form>
+
+              <div className="onboarding-panel-footer">
+                <p>By continuing, you agree to our</p>
+                <nav className="onboarding-legal-links" aria-label="Legal information">
+                  <button type="button" onClick={() => setLegalDocument("terms")}>
+                    Terms of Use
+                  </button>
+                  <span aria-hidden="true">·</span>
+                  <button type="button" onClick={() => setLegalDocument("privacy")}>
+                    Privacy Notice
+                  </button>
+                </nav>
+                <span className="onboarding-operator">An AI-Classmate experience</span>
+              </div>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#00a884] hover:bg-[#029072] text-[#111b21] font-bold py-3 rounded-xl transition"
-            >
-              {loading ? "Entering Xavier's Corridor..." : "Enter Xavier's College →"}
-            </button>
-            {error && <p className="error-banner" role="alert">{error}</p>}
-          </form>
-          <nav className="onboarding-legal-links" aria-label="Legal information">
-            <button type="button" onClick={() => setLegalDocument("terms")}>
-              Terms of Use
-            </button>
-            <span aria-hidden="true">·</span>
-            <button type="button" onClick={() => setLegalDocument("privacy")}>
-              Privacy Notice
-            </button>
-          </nav>
-        </div>
+          </section>
+        </main>
         <LegalDialog
           documentType={legalDocument}
           onClose={() => setLegalDocument(null)}
@@ -599,6 +633,25 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="settings-link"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setProfileOpen(true);
+                    }}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="settings-link settings-link-danger"
+                    onClick={handleSignOut}
+                  >
+                    Sign out
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
@@ -975,6 +1028,67 @@ export default function App() {
                 <span>Your chat partner</span>
                 <strong>{session.playerName}</strong>
               </div>
+            </section>
+          </div>
+        )}
+        {profileOpen && (
+          <div
+            className="contact-overlay"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setProfileOpen(false);
+            }}
+          >
+            <section
+              className="profile-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="profile-title"
+            >
+              <button
+                type="button"
+                className="contact-close"
+                aria-label="Close profile"
+                onClick={() => setProfileOpen(false)}
+              >
+                ✕
+              </button>
+              <div className="profile-avatar" aria-hidden="true">
+                {session.playerName.trim().charAt(0).toUpperCase()}
+              </div>
+              <p className="contact-eyebrow">AI-Classmate profile</p>
+              <h3 id="profile-title">{session.playerName}</h3>
+              <p className="profile-description">
+                Your player profile and current story progress.
+              </p>
+              <dl className="profile-stats">
+                <div>
+                  <dt>Love</dt>
+                  <dd>❤️ {session.love}/100</dd>
+                </div>
+                <div>
+                  <dt>Hate</dt>
+                  <dd>🔥 {session.hate}/100</dd>
+                </div>
+                <div>
+                  <dt>Messages</dt>
+                  <dd>{session.messages.length}</dd>
+                </div>
+                <div>
+                  <dt>Characters</dt>
+                  <dd>{session.characters?.length ?? 0}</dd>
+                </div>
+              </dl>
+              <p className="profile-signout-note">
+                Signing out clears the saved session from this browser. It does
+                not delete the story stored by the app.
+              </p>
+              <button
+                type="button"
+                className="profile-signout-button"
+                onClick={handleSignOut}
+              >
+                Sign out
+              </button>
             </section>
           </div>
         )}
