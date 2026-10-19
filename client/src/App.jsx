@@ -109,8 +109,35 @@ export default function App() {
   const [npcName, setNpcName] = useState("");
   const [npcRole, setNpcRole] = useState("");
   const [npcPersonality, setNpcPersonality] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [theme, setTheme] = useState("dark");
+  const [fontSize, setFontSize] = useState("16px");
+  const menuRef = useRef(null);
 
   const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const closeMenu = (event) => {
+      if (event.type === "keydown" && event.key === "Escape") {
+        setMenuOpen(false);
+      } else if (
+        event.type === "pointerdown" &&
+        !menuRef.current?.contains(event.target)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("keydown", closeMenu);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     const savedId = localStorage.getItem("xaviers_session_id");
@@ -290,7 +317,10 @@ export default function App() {
   const lastAiIndex = session.messages.length - 1;
 
   return (
-    <div className="app-shell h-screen w-full bg-[#0b141a] text-[#e9edef] flex justify-center overflow-hidden">
+    <div
+      className="app-shell h-screen w-full bg-[#0b141a] text-[#e9edef] flex justify-center overflow-hidden"
+      data-theme={theme}
+    >
       {/* Main Responsive Mobile/Desktop Container */}
       <div className="app-frame relative w-full max-w-2xl h-full flex flex-col bg-[#0b141a] border-x border-[#222d34]">
         {/* 1. CUSTOM PROJECT HEADER */}
@@ -326,19 +356,86 @@ export default function App() {
             </div>
           </div>
 
-          {/* Unified Scene Cast Drawer Toggle */}
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="px-3 py-1.5 rounded-lg bg-[#111b21] hover:bg-[#2a3942] text-xs font-medium text-[#00a884] border border-[#2a3942] transition"
-          >
-            👥 Cast ({session.characters?.length ?? 0})
-          </button>
+          <div className="header-actions">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="cast-button px-3 py-1.5 rounded-lg bg-[#111b21] hover:bg-[#2a3942] text-xs font-medium text-[#00a884] border border-[#2a3942] transition"
+            >
+              👥 Cast ({session.characters?.length ?? 0})
+            </button>
+            <div className="settings-menu" ref={menuRef}>
+              <button
+                type="button"
+                className="menu-trigger"
+                aria-label="Chat options"
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                <span aria-hidden="true">⋮</span>
+              </button>
+              {menuOpen && (
+                <div className="settings-dropdown" role="menu" aria-label="Chat options">
+                  <div className="settings-group">
+                    <span className="settings-label">Font size</span>
+                    <div className="settings-choice-row" aria-label="Font size">
+                      {[
+                        { label: "Small", value: "14px" },
+                        { label: "Medium", value: "16px" },
+                        { label: "Large", value: "18px" }
+                      ].map((choice) => (
+                        <button
+                          key={choice.value}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={fontSize === choice.value}
+                          className={`settings-choice${fontSize === choice.value ? " is-selected" : ""}`}
+                          onClick={() => setFontSize(choice.value)}
+                        >
+                          {choice.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="settings-group">
+                    <span className="settings-label">Theme</span>
+                    <div className="settings-choice-row" aria-label="Theme">
+                      {["dark", "light"].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={theme === option}
+                          className={`settings-choice${theme === option ? " is-selected" : ""}`}
+                          onClick={() => setTheme(option)}
+                        >
+                          {option === "dark" ? "Dark" : "Light"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="settings-link"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setContactOpen(true);
+                    }}
+                  >
+                    Contact
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </header>
 
         {/* 2. WHATSAPP CLASSIC DARK CHAT STREAM */}
         <main
           className="story-stream flex-1 overflow-y-auto p-4 space-y-3"
           style={{
+            "--chat-font-size": fontSize,
             backgroundColor: "#0b141a",
             backgroundImage:
               "radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 0)",
@@ -589,6 +686,44 @@ export default function App() {
                 </button>
               </form>
             </div>
+          </div>
+        )}
+        {contactOpen && (
+          <div
+            className="contact-overlay"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setContactOpen(false);
+            }}
+          >
+            <section
+              className="contact-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="contact-title"
+            >
+              <button
+                type="button"
+                className="contact-close"
+                aria-label="Close contact details"
+                onClick={() => setContactOpen(false)}
+              >
+                ✕
+              </button>
+              <div className="contact-avatar">
+                <img src="/isha-scene.jpg" alt="" />
+              </div>
+              <p className="contact-eyebrow">Xavier&apos;s College</p>
+              <h3 id="contact-title">Isha</h3>
+              <p className="contact-description">
+                Brilliant, wealthy, and fiercely arrogant. Isha rules the campus
+                and is at the center of your story.
+              </p>
+              <div className="contact-player">
+                <span>Your chat partner</span>
+                <strong>{session.playerName}</strong>
+              </div>
+            </section>
           </div>
         )}
       </div>
