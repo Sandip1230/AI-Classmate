@@ -944,8 +944,9 @@ export default function App() {
             "--chat-font-size": fontSize,
             backgroundColor: "#0b141a",
             backgroundImage:
-              "radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 0)",
-            backgroundSize: "24px 24px"
+              theme === "light" ? undefined : "url('/chat-background.png')",
+            backgroundPosition: "center",
+            backgroundSize: theme === "light" ? "24px 24px" : "cover"
           }}
         >
           {session.messages.map((msg, index) => {
