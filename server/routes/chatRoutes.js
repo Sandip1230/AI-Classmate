@@ -70,17 +70,36 @@ export function getAiProviderError(error) {
       message: "Gemini rejected the request. Check the configured model and try again."
     };
   }
+  if (/APIConnectionTimeoutError/.test(error?.name || "")) {
+    return {
+      status: 504,
+      message: "The connection from Render to Gemini timed out. Check Render service logs and try again."
+    };
+  }
+  if (/APIConnectionError/.test(error?.name || "")) {
+    return {
+      status: 503,
+      message: "Render could not connect to Google's Gemini API. Check the Render service logs and try again."
+    };
+  }
   return {
     status: 502,
-    message: "Unable to reach Gemini. Check your connection and try again."
+    message: "Gemini returned an unexpected error. Check the Render service logs and try again."
   };
 }
 
 function sendAiRouteError(res, label, error, apiKey) {
-  const details = String(error?.message || "Unknown error")
-    .split(apiKey || "\u0000")
-    .join("[redacted]");
-  console.error(label, error?.name || "Error", details);
+  const redact = (value) =>
+    String(value || "Unknown error").split(apiKey || "\u0000").join("[redacted]");
+  const errorDetails = [
+    `${error?.name || "Error"}${error?.status ? ` (${error.status})` : ""}: ${redact(error?.message)}`
+  ];
+  if (error?.cause) {
+    errorDetails.push(
+      `Cause: ${error.cause.name || "Error"}: ${redact(error.cause.message)}`
+    );
+  }
+  console.error(label, errorDetails.join(" | "));
   const providerError = getAiProviderError(error);
   return res.status(providerError.status).json({ error: providerError.message });
 }

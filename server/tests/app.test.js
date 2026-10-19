@@ -139,24 +139,6 @@ test("returns client errors for malformed and oversized JSON", async () => {
       body: "{"
     });
 
-    test("explains common Gemini API failures without exposing provider error details", () => {
-      assert.match(
-        getAiProviderError({ status: 400, message: "API key not valid" }).message,
-        /key created in Google AI Studio/
-      );
-      assert.match(
-        getAiProviderError({ status: 404, message: "not found" }).message,
-        /GEMINI_MODEL/
-      );
-      assert.equal(
-        getAiProviderError({ status: 429, message: "quota exceeded" }).status,
-        429
-      );
-      assert.doesNotMatch(
-        getAiProviderError({ status: 400, message: "API key secret-value" }).message,
-        /secret-value/
-      );
-    });
     const oversized = await fetch(`${baseUrl}/api/session/init`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -172,4 +154,31 @@ test("returns client errors for malformed and oversized JSON", async () => {
       error: "Request body is too large."
     });
   });
+});
+
+test("explains common Gemini API failures without exposing provider error details", () => {
+  assert.match(
+    getAiProviderError({ status: 400, message: "API key not valid" }).message,
+    /key created in Google AI Studio/
+  );
+  assert.match(
+    getAiProviderError({ status: 404, message: "not found" }).message,
+    /GEMINI_MODEL/
+  );
+  assert.equal(
+    getAiProviderError({ status: 429, message: "quota exceeded" }).status,
+    429
+  );
+  assert.equal(
+    getAiProviderError({ name: "APIConnectionError", message: "Connection error" }).status,
+    503
+  );
+  assert.match(
+    getAiProviderError({ name: "APIConnectionTimeoutError" }).message,
+    /timed out/
+  );
+  assert.doesNotMatch(
+    getAiProviderError({ status: 400, message: "API key secret-value" }).message,
+    /secret-value/
+  );
 });
