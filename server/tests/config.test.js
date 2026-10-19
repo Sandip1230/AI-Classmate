@@ -14,6 +14,7 @@ test("loads deployment configuration and defaults", () => {
   assert.equal(config.nodeEnv, "development");
   assert.equal(config.trustProxy, 0);
   assert.equal(config.geminiModel, "gemini-3.8-flash");
+  assert.equal(config.googleClientId, "");
   assert.deepEqual(config.clientOrigins, [
     "https://classmate.example.com",
     "http://localhost:5173"

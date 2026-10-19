@@ -37,6 +37,10 @@ const MessageSchema = new mongoose.Schema({
 
 const SessionSchema = new mongoose.Schema(
   {
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    },
     playerName: { type: String, required: true, trim: true },
     playerGender: {
       type: String,
@@ -61,5 +65,7 @@ const SessionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+SessionSchema.index({ ownerId: 1, updatedAt: -1 });
 
 export default mongoose.model("Session", SessionSchema);

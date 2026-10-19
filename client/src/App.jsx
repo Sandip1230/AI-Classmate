@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api/session").replace(/\/+$/, "");
+const API_ROOT = API_BASE.replace(/\/session$/, "");
 const CHAT_EMOJIS = [
   "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣",
   "😊", "😇", "🙂", "😉", "😍", "🥰", "😘", "😋",
@@ -61,11 +62,11 @@ const LEGAL_CONTENT = {
       },
       {
         title: "Information the app stores",
-        text: "When you play, the app stores the player name and gender you choose, your AI friend's name and gender, your chat messages, story and AI replies, relationship scores, custom character details, and session timestamps in the MongoDB database configured by the operator. The app also stores the session identifier in this browser's local storage so it can resume your session."
+        text: "When you play, the app stores your Google account identifier, email address, display name and profile picture, along with the player name and gender you choose, your AI friend's name and gender, your chat messages, story and AI replies, relationship scores, custom character details, and session timestamps in the MongoDB database configured by the operator. A secure, HttpOnly browser cookie keeps you signed in, and the app stores the active story identifier in local storage. Your stories are associated with your account."
       },
       {
         title: "How information is used and shared",
-        text: "The app uses session information to run and resume your story. To generate replies and story summaries, it sends your current message and relevant context—including your player name, recent conversation, story summary, character details, and game state—to Google's Gemini AI service using the Gemini API key you provide. Your key is kept in this browser tab's session storage and sent to the app server only with AI-generation requests; the server does not save it. Google processes your key and submitted story information under its own terms and privacy practices."
+        text: "The app uses your Google account to authenticate you and associate your stories with your account. Google sign-in verifies your identity and does not give the app access to your Google password. To generate replies and story summaries, the app sends your current message and relevant context—including your player name, recent conversation, story summary, character details, and game state—to Google's Gemini AI service using the Gemini API key you provide. Your key is kept in this browser tab's session storage and sent to the app server only with AI-generation requests; the server does not save it. Google processes your account information and submitted story information under its own terms and privacy practices."
       },
       {
         title: "Storage location and service providers",
@@ -73,7 +74,7 @@ const LEGAL_CONTENT = {
       },
       {
         title: "Retention and deletion",
-        text: "Sessions do not currently expire automatically, and the app has no in-app session deletion control. Stored session information is retained until the operator manually deletes it. Clearing this site's browser storage removes the saved session identifier from that browser, but does not delete the database session."
+        text: "Sign-in sessions expire after 30 days. Stories do not currently expire automatically, and the app has no in-app story deletion control. Stored story information is retained until the operator manually deletes it. Signing out removes this browser's active story identifier but does not delete stories stored in your account."
       },
       {
         title: "Your choices and privacy requests",
@@ -159,7 +160,10 @@ async function requestSession(path, options) {
     : options;
   let response;
   try {
-    response = await fetch(`${API_BASE}${path}`, requestOptions);
+    response = await fetch(`${API_BASE}${path}`, {
+      ...requestOptions,
+      credentials: "include"
+    });
   } catch {
     throw new Error("Can't reach the game server. Check that the server is running.");
   }
@@ -172,14 +176,43 @@ async function requestSession(path, options) {
   }
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       getErrorMessage(data.error) || `The server returned an error (${response.status}).`
     );
+    error.status = response.status;
+    throw error;
   }
   if (!data || typeof data._id !== "string" || !Array.isArray(data.messages)) {
     throw new Error("The server response was not a valid game session.");
   }
 
+  return data;
+}
+
+async function requestApi(path, options = {}) {
+  let response;
+  try {
+    response = await fetch(`${API_ROOT}${path}`, {
+      ...options,
+      credentials: "include"
+    });
+  } catch {
+    throw new Error("Can't reach the game server. Check that the server is running.");
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error("The server returned an unreadable response. Check the server terminal.");
+  }
+  if (!response.ok) {
+    const error = new Error(
+      getErrorMessage(data.error) || `The server returned an error (${response.status}).`
+    );
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }
 
@@ -348,6 +381,10 @@ function ApiKeyDialog({ currentKey, onClose, onSave, onRemove }) {
 
 export default function App() {
   const [session, setSession] = useState(null);
+  const [user, setUser] = useState(null);
+  const [savedSessions, setSavedSessions] = useState([]);
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
   const [playerNameInput, setPlayerNameInput] = useState("");
   const [playerGenderInput, setPlayerGenderInput] = useState("");
   const [friendGenderInput, setFriendGenderInput] = useState("girl");
@@ -379,6 +416,8 @@ export default function App() {
   const menuRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const messageInputRef = useRef(null);
+  const googleButtonRef = useRef(null);
+  const googleSignInHandler = useRef(null);
 
   const chatEndRef = useRef(null);
 
@@ -427,18 +466,130 @@ export default function App() {
   }, [emojiOpen]);
 
   useEffect(() => {
-    const savedId = localStorage.getItem("xaviers_session_id");
-    if (savedId) {
-      requestSession("/init", jsonRequest("POST", { sessionId: savedId }))
-        .then((data) => {
-          setSession(data);
-        })
-        .catch((requestError) => {
-          localStorage.removeItem("xaviers_session_id");
+    let cancelled = false;
+    const restoreSignIn = async () => {
+      try {
+        const config = await requestApi("/auth/config");
+        if (cancelled) return;
+        setGoogleClientId(config.googleClientId || "");
+        try {
+          const account = await requestApi("/auth/me");
+          if (!cancelled) setUser(account.user);
+        } catch (requestError) {
+          if (requestError.status !== 401) throw requestError;
+          if (!cancelled) setAuthLoading(false);
+        }
+      } catch (requestError) {
+        if (!cancelled) {
           setError(requestError.message);
-        });
-    }
+          setAuthLoading(false);
+        }
+      }
+    };
+    restoreSignIn();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let cancelled = false;
+    const restoreStories = async () => {
+      const savedId = localStorage.getItem("xaviers_session_id");
+      if (savedId) {
+        try {
+          const activeSession = await requestSession(
+            "/init",
+            jsonRequest("POST", { sessionId: savedId })
+          );
+          if (!cancelled) setSession(activeSession);
+        } catch (requestError) {
+          if (requestError.status === 400 || requestError.status === 404) {
+            localStorage.removeItem("xaviers_session_id");
+          } else if (!cancelled) {
+            setError(requestError.message);
+          }
+        }
+      }
+      try {
+        const result = await requestApi("/session");
+        if (!cancelled) setSavedSessions(result.sessions);
+      } catch (requestError) {
+        if (!cancelled) setError(requestError.message);
+      } finally {
+        if (!cancelled) setAuthLoading(false);
+      }
+    };
+    restoreStories();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!googleClientId || authLoading || user) return undefined;
+    let cancelled = false;
+    const renderGoogleButton = () => {
+      if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) {
+        return;
+      }
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: (response) => {
+          if (response.credential) {
+            googleSignInHandler.current?.(response.credential);
+          }
+        }
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        shape: "pill",
+        text: "continue_with",
+        width: 300
+      });
+    };
+
+    const existingScript = document.querySelector("script[data-google-identity]");
+    if (window.google?.accounts?.id) {
+      renderGoogleButton();
+    } else if (existingScript) {
+      existingScript.addEventListener("load", renderGoogleButton);
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.dataset.googleIdentity = "true";
+      script.addEventListener("load", renderGoogleButton);
+      script.addEventListener("error", () => {
+        if (!cancelled) setError("Google sign-in could not be loaded. Check your connection and try again.");
+      });
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      cancelled = true;
+      existingScript?.removeEventListener("load", renderGoogleButton);
+    };
+  }, [googleClientId, authLoading, user]);
+
+  googleSignInHandler.current = async (credential) => {
+    setAuthLoading(true);
+    setError("");
+    try {
+      const result = await requestApi(
+        "/auth/google",
+        jsonRequest("POST", { credential })
+      );
+      setUser(result.user);
+    } catch (requestError) {
+      setError(requestError.message);
+      setAuthLoading(false);
+    }
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -465,10 +616,46 @@ export default function App() {
       );
       localStorage.setItem("xaviers_session_id", data._id);
       setSession(data);
+      setSavedSessions((current) => [
+        {
+          _id: data._id,
+          playerName: data.playerName,
+          friendName: data.friendName,
+          updatedAt: data.updatedAt,
+          messageCount: data.messages.length,
+          preview: "Your story starts here"
+        },
+        ...current.filter((saved) => saved._id !== data._id)
+      ].slice(0, 100));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenSavedSession = async (sessionId) => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await requestSession(`/${sessionId}`, { method: "GET" });
+      localStorage.setItem("xaviers_session_id", data._id);
+      setSession(data);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShowSavedSessions = async () => {
+    setSession(null);
+    setError("");
+    try {
+      const result = await requestApi("/session");
+      setSavedSessions(result.sessions);
+    } catch (requestError) {
+      setError(requestError.message);
     }
   };
 
@@ -584,12 +771,22 @@ export default function App() {
     });
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    let signOutError = "";
+    try {
+      await requestApi("/auth/logout", jsonRequest("POST"));
+    } catch (requestError) {
+      signOutError = requestError.message;
+    }
     localStorage.removeItem("xaviers_session_id");
+    sessionStorage.removeItem("ai_classmate_gemini_api_key");
+    setGeminiApiKey("");
+    setUser(null);
+    setSavedSessions([]);
     setSession(null);
     setPlayerNameInput("");
     setMessageInput("");
-    setError("");
+    setError(signOutError);
     setMenuOpen(false);
     setProfileOpen(false);
     setDrawerOpen(false);
@@ -613,6 +810,104 @@ export default function App() {
       }}
     />
   ) : null;
+
+  if (authLoading && user) {
+    return (
+      <div className="onboarding-shell">
+        <main className="onboarding-card">
+          <section className="onboarding-panel auth-loading" aria-live="polite">
+            <span className="onboarding-eyebrow">AI-CLASSMATE</span>
+            <h1>Loading your account…</h1>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="onboarding-shell login-landing">
+        <header className="login-header">
+          <div className="login-brand">
+            <span className="onboarding-brand-mark" aria-hidden="true">A</span>
+            <span>
+              <strong>AI-Classmate</strong>
+              <small>A Xavier&apos;s College story</small>
+            </span>
+          </div>
+          <div className="login-header-actions">
+            <span className="login-prompt">Sign in to play and save your story</span>
+            {googleClientId ? (
+              <div className="google-signin">
+                <div ref={googleButtonRef} />
+              </div>
+            ) : authLoading ? (
+              <span className="login-prompt" role="status">Loading sign-in…</span>
+            ) : (
+              <p className="login-config-error" role="alert">
+                Google sign-in needs a server GOOGLE_CLIENT_ID.
+              </p>
+            )}
+            {error && <p className="login-config-error" role="alert">{error}</p>}
+          </div>
+        </header>
+
+        <main className="scenario-preview" aria-labelledby="scenario-title">
+          <div className="scenario-heading">
+            <div>
+              <span className="onboarding-eyebrow">SCENARIO PREVIEW</span>
+              <h1 id="scenario-title">Crown of Thorns</h1>
+              <p>Your first day at Xavier&apos;s College.</p>
+            </div>
+            <span className="scenario-preview-badge">Opening scene</span>
+          </div>
+          <section className="scenario-chat" aria-label="Opening story scene">
+            <div className="scenario-message scenario-narration">
+              Xavier&apos;s College mein aaj tumhara pehla din hai. Haath mein
+              kitabein pakde tum main corridor se apni class ki taraf badh hi
+              rahe ho ki saamne Isha, college ki brilliant, wealthy aur arrogant
+              Queen, tumhara raasta rok leti hai. Woh tumhe upar se neeche tak
+              ek cold, judging nazar se dekhti hai.
+            </div>
+            <div className="scenario-message scenario-dialogue">
+              <strong>Isha</strong>
+              <p>
+                Excuse me? Dekh kar nahi chal sakte kya, Newcomer? Ya pehle din
+                hi Xavier&apos;s ke corridor mein girne ka shauk hai?
+              </p>
+            </div>
+            <div className="scenario-message scenario-narration">
+              Vivaan ek arrogant smirk ke saath aage aata hai aur tumhare
+              kandhe ke paas khada ho jata hai, jaise tumhe challenge kar raha
+              ho.
+            </div>
+            <div className="scenario-message scenario-dialogue">
+              <strong>Vivaan</strong>
+              <p>
+                Sun, Xavier&apos;s mein naye ho toh apni aukaat mein reh. Isha
+                ke saamne aane ki galti dubara mat karna. Tumhara naam kya hai?
+              </p>
+            </div>
+          </section>
+          <footer className="scenario-footer">
+            <span>Preview only</span>
+            <p>Sign in with Google above to create your character and enter the story.</p>
+          </footer>
+        </main>
+
+        <footer className="login-legal">
+          <span>By continuing, you agree to our</span>
+          <nav className="onboarding-legal-links" aria-label="Legal information">
+            <button type="button" onClick={() => setLegalDocument("terms")}>Terms of Use</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" onClick={() => setLegalDocument("privacy")}>Privacy Notice</button>
+          </nav>
+          <span className="onboarding-operator">An AI-Classmate experience</span>
+        </footer>
+        <LegalDialog documentType={legalDocument} onClose={() => setLegalDocument(null)} />
+      </div>
+    );
+  }
 
   // --- ONBOARDING SCREEN (No Hardcoded Name) ---
   if (!session) {
@@ -651,6 +946,39 @@ export default function App() {
 
           <section className="onboarding-panel">
             <div className="onboarding-panel-content">
+              <div className="account-strip">
+                {user.picture && <img src={user.picture} alt="" referrerPolicy="no-referrer" />}
+                <span>Signed in as <strong>{user.name}</strong><br />{user.email}</span>
+                <button type="button" onClick={handleSignOut}>Sign out</button>
+              </div>
+              {savedSessions.length > 0 && (
+                <section className="saved-stories" aria-labelledby="saved-stories-title">
+                  <div className="saved-stories-heading">
+                    <h3 id="saved-stories-title">Your saved stories</h3>
+                    <span>{savedSessions.length}{savedSessions.length === 100 ? "+" : ""}</span>
+                  </div>
+                  <div className="saved-stories-list">
+                    {savedSessions.map((saved) => (
+                      <button
+                        className="saved-story"
+                        type="button"
+                        key={saved._id}
+                        disabled={loading}
+                        onClick={() => handleOpenSavedSession(saved._id)}
+                      >
+                        <span className="saved-story-avatar" aria-hidden="true">
+                          {(saved.friendName || "A").charAt(0).toUpperCase()}
+                        </span>
+                        <span className="saved-story-copy">
+                          <strong>{saved.friendName} · {saved.playerName}</strong>
+                          <span>{saved.preview}</span>
+                        </span>
+                        <span className="saved-story-count">{saved.messageCount}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
               <div className="onboarding-welcome">
                 <span className="onboarding-eyebrow">INTERACTIVE AI ROLEPLAY</span>
                 <h2>Step into the story.</h2>
@@ -811,6 +1139,14 @@ export default function App() {
           </div>
 
           <div className="header-actions">
+            <button
+              type="button"
+              onClick={handleShowSavedSessions}
+              className="cast-button stories-button"
+              title="View your saved stories"
+            >
+              Stories ({savedSessions.length})
+            </button>
             <button
               onClick={() => setDrawerOpen(true)}
               className="cast-button px-3 py-1.5 rounded-lg bg-[#111b21] hover:bg-[#2a3942] text-xs font-medium text-[#00a884] border border-[#2a3942] transition"
@@ -1313,6 +1649,8 @@ export default function App() {
               <p className="contact-eyebrow">AI-Classmate profile</p>
               <h3 id="profile-title">{session.playerName}</h3>
               <p className="profile-description">
+                Signed in as {user.email}
+                <br />
                 {PLAYER_GENDERS.find((gender) => gender.value === session.playerGender)?.symbol ?? "⚧"}
                 {" "}· AI friend: {session.friendGender === "girl" ? "♀" : "♂"}{" "}
                 {session.friendName || "Isha"}
@@ -1338,8 +1676,8 @@ export default function App() {
                 </div>
               </dl>
               <p className="profile-signout-note">
-                Signing out clears the saved session from this browser. It does
-                not delete the story stored by the app.
+                Your stories are saved to your account. Signing out does not
+                delete them.
               </p>
               <button
                 type="button"

@@ -39,6 +39,7 @@ export function getServerConfig(env = process.env) {
   return {
     port,
     mongoUri: env.MONGO_URI.trim(),
+    googleClientId: env.GOOGLE_CLIENT_ID?.trim() || "",
     geminiModel: env.GEMINI_MODEL?.trim() || "gemini-3.8-flash",
     nodeEnv: env.NODE_ENV || "development",
     trustProxy: trustProxyHopCount ?? trustProxy,

@@ -3,6 +3,8 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import mongoose from "mongoose";
+import { requireAuth } from "./middleware/requireAuth.js";
+import { createAuthRouter } from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 
 const generalApiLimiter = rateLimit({
@@ -21,7 +23,32 @@ const aiTurnLimiter = rateLimit({
   message: { error: "Too many AI turns. Please wait before sending another message." }
 });
 
-export function createApp({ clientOrigins, trustProxy } = {}) {
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many sign-in attempts. Please wait before trying again." }
+});
+
+function requireTrustedOrigin(allowedOrigins) {
+  return (req, res, next) => {
+    if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+    const origin = req.get("Origin");
+    if (!origin || !allowedOrigins.includes(origin)) {
+      return res.status(403).json({ error: "This request origin is not allowed." });
+    }
+    return next();
+  };
+}
+
+export function createApp({
+  clientOrigins,
+  trustProxy,
+  googleClientId,
+  googleClient,
+  nodeEnv
+} = {}) {
   const app = express();
   const allowedOrigins = clientOrigins ?? (process.env.CLIENT_ORIGINS || "")
     .split(",")
@@ -42,6 +69,7 @@ export function createApp({ clientOrigins, trustProxy } = {}) {
       origin(origin, callback) {
         callback(null, !origin || allowedOrigins.includes(origin));
       },
+      credentials: true,
       methods: ["GET", "POST", "PUT", "OPTIONS"],
       allowedHeaders: ["Content-Type", "X-Gemini-Api-Key"],
       maxAge: 600
@@ -58,10 +86,20 @@ export function createApp({ clientOrigins, trustProxy } = {}) {
   });
 
   app.use("/api", generalApiLimiter);
+  app.use("/api/auth", requireTrustedOrigin(allowedOrigins));
+  app.post("/api/auth/google", authLimiter);
+  app.use(
+    "/api/auth",
+    createAuthRouter({
+      googleClientId: googleClientId ?? process.env.GOOGLE_CLIENT_ID ?? "",
+      googleClient,
+      nodeEnv: nodeEnv ?? process.env.NODE_ENV ?? "development"
+    })
+  );
   app.use("/api/session/:id/message", aiTurnLimiter);
   app.use("/api/session/:id/edit-last", aiTurnLimiter);
   app.use("/api/session/:id/regenerate", aiTurnLimiter);
-  app.use("/api/session", chatRoutes);
+  app.use("/api/session", requireTrustedOrigin(allowedOrigins), requireAuth, chatRoutes);
 
   app.use((req, res) => {
     res.status(404).json({ error: "Not found." });

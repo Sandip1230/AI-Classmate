@@ -6,10 +6,11 @@ const { createApp } = await import("../app.js");
 const { getAiProviderError } = await import("../routes/chatRoutes.js");
 const { parseRoleplayResponse } = await import("../services/geminiService.js");
 
-async function withServer(callback) {
+async function withServer(callback, appOptions = {}) {
   const server = createApp({
     clientOrigins: ["https://classmate.example.com"],
-    trustProxy: 0
+    trustProxy: 0,
+    ...appOptions
   }).listen(0, "127.0.0.1");
   await once(server, "listening");
   const { port } = server.address();
@@ -64,72 +65,84 @@ test("allows only configured browser origins", async () => {
       allowed.headers.get("access-control-allow-headers"),
       /x-gemini-api-key/i
     );
+    assert.equal(allowed.headers.get("access-control-allow-credentials"), "true");
     assert.equal(denied.headers.get("access-control-allow-origin"), null);
   });
 });
 
-test("validates API input and returns JSON for unknown routes", async () => {
+test("requires account authentication for private stories and reports sign-in configuration", async () => {
   await withServer(async (baseUrl) => {
-    const missingBody = await fetch(`${baseUrl}/api/session/init`, {
-      method: "POST"
-    });
-    const missingApiKey = await fetch(
-      `${baseUrl}/api/session/0123456789abcdef01234567/message`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: "Hello" })
-      }
-    );
-    const oversizedApiKey = await fetch(
-      `${baseUrl}/api/session/0123456789abcdef01234567/message`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Gemini-Api-Key": "k".repeat(513)
-        },
-        body: JSON.stringify({ text: "Hello" })
-      }
-    );
-    const invalidSession = await fetch(`${baseUrl}/api/session/not-an-id/message`, {
+    const privateStories = await fetch(`${baseUrl}/api/session`);
+    const createStory = await fetch(`${baseUrl}/api/session/init`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: "Hello" })
+      headers: {
+        Origin: "https://classmate.example.com",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ playerName: "Alex" })
     });
-    const invalidGender = await fetch(`${baseUrl}/api/session/init`, {
+    const googleSignIn = await fetch(`${baseUrl}/api/auth/google`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        playerName: "Alex",
-        playerGender: "unknown",
-        friendName: "Isha",
-        friendGender: "girl"
-      })
+      headers: {
+        Origin: "https://classmate.example.com",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ credential: "test-token" })
     });
-    const oversizedName = await fetch(`${baseUrl}/api/session/init`, {
+    const untrustedOrigin = await fetch(`${baseUrl}/api/session/init`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        playerName: "A".repeat(41),
-        playerGender: "male",
-        friendName: "Isha",
-        friendGender: "girl"
-      })
+      headers: {
+        Origin: "https://unexpected.example",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ playerName: "Alex" })
     });
+    const config = await fetch(`${baseUrl}/api/auth/config`);
+    const configBody = await config.json();
     const unknown = await fetch(`${baseUrl}/api/unknown`);
     const unknownBody = await unknown.json();
 
-    assert.equal(missingBody.status, 400);
-    assert.equal(missingApiKey.status, 400);
-    assert.match((await missingApiKey.json()).error, /Gemini API key/);
-    assert.equal(oversizedApiKey.status, 400);
-    assert.equal(invalidSession.status, 400);
-    assert.equal(invalidGender.status, 400);
-    assert.equal(oversizedName.status, 400);
+    assert.equal(privateStories.status, 401);
+    assert.match((await privateStories.json()).error, /Sign in with Google/);
+    assert.equal(createStory.status, 401);
+    assert.equal(googleSignIn.status, 503);
+    assert.equal(untrustedOrigin.status, 403);
+    assert.deepEqual(configBody, { googleClientId: null });
     assert.equal(unknown.status, 404);
     assert.deepEqual(unknownBody, { error: "Not found." });
   });
+});
+
+test("verifies Google credentials against the configured OAuth client", async () => {
+  let verifiedCredential;
+  await withServer(
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/auth/google`, {
+        method: "POST",
+        headers: {
+          Origin: "https://classmate.example.com",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ credential: "invalid-token" })
+      });
+
+      assert.equal(response.status, 401);
+      assert.match((await response.json()).error, /could not be verified/);
+      assert.deepEqual(verifiedCredential, {
+        idToken: "invalid-token",
+        audience: "web-client-id"
+      });
+    },
+    {
+      googleClientId: "web-client-id",
+      googleClient: {
+        async verifyIdToken(options) {
+          verifiedCredential = options;
+          throw new Error("invalid credential");
+        }
+      }
+    }
+  );
 });
 
 test("returns client errors for malformed and oversized JSON", async () => {

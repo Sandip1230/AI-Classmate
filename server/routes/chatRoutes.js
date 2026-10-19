@@ -159,6 +159,63 @@ function createDefaultCharacters(friendName, friendGender) {
   ];
 }
 
+async function findOwnedSession(req, sessionId) {
+  return Session.findOne({ _id: sessionId, ownerId: req.user._id });
+}
+
+router.get("/", async (req, res) => {
+  try {
+    const sessions = await Session.aggregate([
+      { $match: { ownerId: req.user._id } },
+      { $sort: { updatedAt: -1 } },
+      { $limit: 100 },
+      {
+        $project: {
+          playerName: 1,
+          friendName: 1,
+          updatedAt: 1,
+          messageCount: { $size: { $ifNull: ["$messages", []] } },
+          preview: {
+            $let: {
+              vars: {
+                userMessages: {
+                  $filter: {
+                    input: { $ifNull: ["$messages", []] },
+                    as: "message",
+                    cond: { $eq: ["$$message.sender", "user"] }
+                  }
+                }
+              },
+              in: {
+                $ifNull: [
+                  { $arrayElemAt: ["$$userMessages.rawInput", -1] },
+                  "Your story starts here"
+                ]
+              }
+            }
+          }
+        }
+      }
+    ]);
+    return res.json({ sessions });
+  } catch (error) {
+    return sendRouteError(res, "List Sessions Error:", error, "Unable to load your stories.");
+  }
+});
+
+router.get("/:id", async (req, res) => {
+  try {
+    if (!isValidSessionId(req.params.id)) {
+      return res.status(400).json({ error: "Session ID is invalid." });
+    }
+    const session = await findOwnedSession(req, req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found." });
+    return res.json(session);
+  } catch (error) {
+    return sendRouteError(res, "Load Session Error:", error, "Unable to load this story.");
+  }
+});
+
 // 1. Initialize or Resume Session
 router.post("/init", async (req, res) => {
   try {
@@ -174,8 +231,22 @@ router.post("/init", async (req, res) => {
       if (typeof sessionId !== "string" || !isValidSessionId(sessionId)) {
         return res.status(400).json({ error: "Session ID is invalid." });
       }
-      const existing = await Session.findById(sessionId);
+      const existing = await findOwnedSession(req, sessionId);
       if (existing) return res.json(existing);
+      const claimedSession = await Session.findOneAndUpdate(
+        {
+          _id: sessionId,
+          $or: [{ ownerId: { $exists: false } }, { ownerId: null }]
+        },
+        { $set: { ownerId: req.user._id } },
+        { new: true }
+      );
+      if (claimedSession) return res.json(claimedSession);
+      const otherOwnerSession = await Session.exists({ _id: sessionId });
+      if (otherOwnerSession) {
+        return res.status(404).json({ error: "Session not found." });
+      }
+      return res.status(404).json({ error: "Session not found." });
     }
 
     if (typeof playerName !== "string" || !playerName.trim()) {
@@ -239,6 +310,7 @@ router.post("/init", async (req, res) => {
     };
 
     const newSession = await Session.create({
+      ownerId: req.user._id,
       playerName: cleanName,
       playerGender,
       friendName: cleanFriendName,
@@ -277,7 +349,7 @@ router.post("/:id/message", async (req, res) => {
     const apiKey = getUserApiKey(req, res);
     if (!apiKey) return;
 
-    const session = await Session.findById(req.params.id);
+    const session = await findOwnedSession(req, req.params.id);
     if (!session) return res.status(404).json({ error: "Session not found" });
     if (session.messages.length + 2 > MAX_SESSION_MESSAGES) {
       return res.status(409).json({
@@ -348,7 +420,7 @@ router.put("/:id/edit-last", async (req, res) => {
     const apiKey = getUserApiKey(req, res);
     if (!apiKey) return;
 
-    const session = await Session.findById(req.params.id);
+    const session = await findOwnedSession(req, req.params.id);
     if (!session || session.messages.length < 3) {
       return res.status(400).json({ error: "No editable user turn found." });
     }
@@ -408,7 +480,7 @@ router.post("/:id/regenerate", async (req, res) => {
     }
     const apiKey = getUserApiKey(req, res);
     if (!apiKey) return;
-    const session = await Session.findById(req.params.id);
+    const session = await findOwnedSession(req, req.params.id);
     if (!session || session.messages.length < 3) {
       return res
         .status(400)
@@ -474,7 +546,7 @@ router.post("/:id/characters", async (req, res) => {
       });
     }
 
-    const session = await Session.findById(req.params.id);
+    const session = await findOwnedSession(req, req.params.id);
     if (!session) return res.status(404).json({ error: "Session not found" });
     if (session.characters.length >= MAX_CUSTOM_CHARACTERS + 4) {
       return res.status(409).json({

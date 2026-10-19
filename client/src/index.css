@@ -694,6 +694,377 @@
   width: min(100%, 390px);
 }
 
+.auth-panel-content {
+  display: grid;
+  gap: 22px;
+}
+
+.auth-loading {
+  min-height: 340px;
+  flex-direction: column;
+  text-align: center;
+}
+
+.auth-loading h1 {
+  margin: 14px 0 0;
+  color: #f7f4fb;
+  font-size: 24px;
+}
+
+.google-signin {
+  display: flex;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.login-landing {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: clamp(12px, 2vh, 22px);
+  overflow: hidden;
+  padding: clamp(14px, 2.5vh, 26px) clamp(16px, 5vw, 72px) 12px;
+}
+
+.login-header {
+  display: flex;
+  width: min(100%, 1120px);
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0 auto;
+}
+
+.login-brand {
+  display: flex;
+  min-width: max-content;
+  align-items: center;
+  gap: 10px;
+  color: #f7f4fb;
+}
+
+.login-brand > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.login-brand strong {
+  font-size: 14px;
+}
+
+.login-brand small {
+  color: #aaa5bb;
+  font-size: 10px;
+}
+
+.login-header-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.login-prompt {
+  color: #c2bdcf;
+  font-size: 11px;
+}
+
+.login-header-actions .google-signin {
+  min-height: 40px;
+}
+
+.login-config-error {
+  max-width: 300px;
+  margin: 0;
+  color: #ffb4bf;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.scenario-preview {
+  display: flex;
+  width: min(100%, 960px);
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: clamp(12px, 2vh, 20px);
+  margin: 0 auto;
+  padding: clamp(16px, 3.2vw, 36px) clamp(16px, 5vw, 58px);
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(8, 11, 20, 0.82), rgba(8, 11, 20, 0.86)),
+    url("/chat-background.png") center / cover,
+    #10131f;
+  border: 1px solid rgba(179, 167, 221, 0.17);
+  border-radius: 22px;
+  box-shadow: 0 24px 75px rgba(0, 0, 0, 0.34);
+}
+
+.scenario-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scenario-heading h1 {
+  margin: 7px 0 4px;
+  color: #f7f4fb;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.scenario-heading p {
+  margin: 0;
+  color: #c2bdcf;
+  font-size: 12px;
+}
+
+.scenario-preview-badge {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  color: #d4b3e0;
+  background: rgba(174, 131, 213, 0.12);
+  border: 1px solid rgba(174, 131, 213, 0.22);
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+.scenario-chat {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(8px, 1.5vh, 14px);
+  overflow-y: auto;
+  padding: 2px 4px;
+  overscroll-behavior: contain;
+}
+
+.scenario-message {
+  width: fit-content;
+  max-width: min(88%, 720px);
+  padding: 11px 15px;
+  color: #eeeaf7;
+  border: 1px solid rgba(185, 169, 225, 0.14);
+  font-size: clamp(12px, 1.6vw, 14px);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.scenario-narration {
+  align-self: center;
+  color: #c2bdcf;
+  background: rgba(19, 21, 32, 0.82);
+  border-radius: 13px;
+}
+
+.scenario-dialogue {
+  align-self: flex-end;
+  background: linear-gradient(145deg, rgba(92, 63, 125, 0.96), rgba(65, 44, 92, 0.96));
+  border-color: rgba(217, 182, 255, 0.18);
+  border-radius: 14px 5px 14px 14px;
+}
+
+.scenario-dialogue strong {
+  color: #e3c8ff;
+  font-size: 11px;
+}
+
+.scenario-dialogue p {
+  margin: 3px 0 0;
+}
+
+.scenario-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(190, 180, 228, 0.12);
+}
+
+.scenario-footer > span {
+  flex: 0 0 auto;
+  color: #d4b3e0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scenario-footer p {
+  margin: 0;
+  color: #aaa5bb;
+  font-size: 11px;
+}
+
+.login-legal {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  color: #827d91;
+  font-size: 10px;
+}
+
+.login-legal .onboarding-legal-links {
+  gap: 7px;
+  margin: 0;
+}
+
+.login-legal .onboarding-legal-links button {
+  font-size: 10px;
+}
+
+.login-legal .onboarding-operator {
+  margin: 0;
+  font-size: 10px;
+}
+
+.account-strip {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 24px;
+  padding: 11px 12px;
+  color: #c2bdcf;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(190, 180, 228, 0.13);
+  border-radius: 13px;
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.account-strip img {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.account-strip span {
+  min-width: 0;
+  flex: 1;
+}
+
+.account-strip strong {
+  color: #f7f4fb;
+}
+
+.account-strip button {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  color: #c6aceb;
+  background: transparent;
+  border: 1px solid rgba(190, 180, 228, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.saved-stories {
+  margin-bottom: 26px;
+}
+
+.saved-stories-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+  color: #aaa5bb;
+  font-size: 11px;
+}
+
+.saved-stories-heading h3 {
+  margin: 0;
+  color: #e8e3f0;
+  font-size: 13px;
+}
+
+.saved-stories-list {
+  display: grid;
+  max-height: 230px;
+  gap: 7px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.saved-story {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  color: #c2bdcf;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(190, 180, 228, 0.12);
+  border-radius: 11px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.saved-story:hover:not(:disabled) {
+  background: rgba(174, 131, 213, 0.11);
+  border-color: rgba(174, 131, 213, 0.4);
+}
+
+.saved-story:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.saved-story-avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(145deg, #aa81d1, #674891);
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.saved-story-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 3px;
+}
+
+.saved-story-copy strong,
+.saved-story-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-story-copy strong {
+  color: #eeeaf7;
+  font-size: 11px;
+}
+
+.saved-story-copy > span,
+.saved-story-count {
+  color: #aaa5bb;
+  font-size: 10px;
+}
+
+.stories-button {
+  white-space: nowrap;
+}
+
 .onboarding-welcome {
   margin-bottom: 34px;
 }
@@ -1553,6 +1924,28 @@
     padding: clamp(12px, 4vw, 24px);
   }
 
+  .login-landing {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    align-items: stretch;
+    overflow-y: auto;
+    padding: clamp(12px, 4vw, 24px);
+  }
+
+  .login-header {
+    flex-wrap: wrap;
+  }
+
+  .login-header-actions {
+    flex-wrap: wrap;
+  }
+
+  .scenario-preview {
+    min-height: 460px;
+    flex: 0 0 auto;
+  }
+
   .onboarding-card {
     grid-template-columns: minmax(0, 1fr);
     width: min(540px, 100%);
@@ -1654,6 +2047,12 @@
     flex: 0 0 auto;
     padding: 8px 9px;
     font-size: 10px;
+  }
+
+  .stories-button {
+    max-width: 78px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .menu-trigger {
@@ -1760,6 +2159,52 @@
 @media (max-width: 480px) {
   .onboarding-shell {
     padding: 0;
+  }
+
+  .login-landing {
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .login-header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .login-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .login-prompt {
+    max-width: 135px;
+    line-height: 1.4;
+  }
+
+  .scenario-preview {
+    min-height: 500px;
+    padding: 16px 13px;
+    border-radius: 16px;
+  }
+
+  .scenario-heading {
+    align-items: flex-start;
+  }
+
+  .scenario-preview-badge {
+    padding: 5px 7px;
+    font-size: 9px;
+  }
+
+  .scenario-message {
+    max-width: 95%;
+    padding: 9px 11px;
+    font-size: 12px;
+  }
+
+  .scenario-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
   }
 
   .onboarding-card {
