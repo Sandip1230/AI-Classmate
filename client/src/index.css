@@ -523,9 +523,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   padding: clamp(14px, 3.5vw, 48px);
   background:
     radial-gradient(ellipse at 14% 16%, rgba(132, 84, 169, 0.24), transparent 38%),
@@ -538,7 +540,7 @@
   grid-template-columns: minmax(0, 1.08fr) minmax(370px, 0.92fr);
   width: min(1080px, 100%);
   min-height: min(650px, calc(100dvh - 64px));
-  overflow: hidden;
+  overflow: clip;
   background: #141522;
   border: 1px solid rgba(195, 175, 220, 0.2);
   border-radius: 28px;
@@ -1547,7 +1549,6 @@
   .onboarding-shell {
     align-items: flex-start;
     min-height: 100vh;
-    height: auto;
     min-height: 100dvh;
     padding: clamp(12px, 4vw, 24px);
   }
@@ -1556,6 +1557,7 @@
     grid-template-columns: minmax(0, 1fr);
     width: min(540px, 100%);
     min-height: 0;
+    overflow: visible;
     border-radius: 23px;
   }
 
