@@ -38,6 +38,17 @@ const MessageSchema = new mongoose.Schema({
 const SessionSchema = new mongoose.Schema(
   {
     playerName: { type: String, required: true, trim: true },
+    playerGender: {
+      type: String,
+      enum: ["male", "female", "nonbinary"],
+      default: "male"
+    },
+    friendName: { type: String, required: true, trim: true, default: "Isha" },
+    friendGender: {
+      type: String,
+      enum: ["boy", "girl"],
+      default: "girl"
+    },
     love: { type: Number, default: 0, min: 0, max: 100 },
     hate: { type: Number, default: 100, min: 0, max: 100 },
     storySummary: {

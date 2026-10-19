@@ -7,55 +7,83 @@ import {
 
 const router = express.Router();
 
-const DEFAULT_CHARACTERS = [
-  {
-    name: "Isha",
-    role: "Queen of Xavier's College",
-    personality:
-      "Brilliant, rich, gorgeous, fiercely arrogant, sharp-tongued Tsundere.",
-    isActive: true
-  },
-  {
-    name: "Vivaan",
-    role: "Isha's Shadow / 'Golden Boy'",
-    personality:
-      "Rich, arrogant, fiercely possessive of Isha, quick to bully newcomers.",
-    isActive: true
-  },
-  {
-    name: "Kritika",
-    role: "Nervous Classmate & Informant",
-    personality:
-      "Friendly to newcomers, whispered gossip expert, terrified of Isha's clique.",
-    isActive: true
-  },
-  {
-    name: "Kabir",
-    role: "Backbench Witty Classmate",
-    personality:
-      "Loves drama, whistles at bold moments, makes humorous observations.",
-    isActive: true
-  }
-];
+function createDefaultCharacters(friendName, friendGender) {
+  const title = friendGender === "girl" ? "Queen" : "King";
+  return [
+    {
+      name: friendName,
+      role: `${title} of Xavier's College`,
+      personality:
+        "Brilliant, wealthy, charismatic, fiercely arrogant, and sharp-tongued.",
+      isActive: true
+    },
+    {
+      name: "Vivaan",
+      role: "Campus Rival",
+      personality:
+        `Rich, arrogant, and quick to challenge newcomers or compete with ${friendName}.`,
+      isActive: true
+    },
+    {
+      name: "Kritika",
+      role: "Nervous Classmate & Informant",
+      personality:
+        "Friendly to newcomers, whispered gossip expert, terrified of the campus clique.",
+      isActive: true
+    },
+    {
+      name: "Kabir",
+      role: "Backbench Witty Classmate",
+      personality:
+        "Loves drama, whistles at bold moments, makes humorous observations.",
+      isActive: true
+    }
+  ];
+}
 
 // 1. Initialize or Resume Session
 router.post("/init", async (req, res) => {
   try {
-    const { sessionId, playerName } = req.body;
+    const {
+      sessionId,
+      playerName,
+      playerGender = "male",
+      friendName = "Isha",
+      friendGender = "girl"
+    } = req.body;
 
     if (sessionId) {
       const existing = await Session.findById(sessionId);
       if (existing) return res.json(existing);
     }
 
-    if (!playerName || !playerName.trim()) {
+    if (typeof playerName !== "string" || !playerName.trim()) {
       return res
         .status(400)
         .json({ error: "Player name is required to start." });
     }
 
     const cleanName = playerName.trim();
+    if (cleanName.length > 40) {
+      return res.status(400).json({ error: "Player name must be 40 characters or fewer." });
+    }
+    if (!["male", "female", "nonbinary"].includes(playerGender)) {
+      return res.status(400).json({ error: "Choose a valid player gender." });
+    }
+    if (typeof friendName !== "string" || !friendName.trim()) {
+      return res.status(400).json({ error: "AI friend name is required." });
+    }
+    const cleanFriendName = friendName.trim();
+    if (cleanFriendName.length > 40) {
+      return res.status(400).json({ error: "AI friend name must be 40 characters or fewer." });
+    }
+    if (!["boy", "girl"].includes(friendGender)) {
+      return res.status(400).json({ error: "Choose whether your AI friend is a boy or a girl." });
+    }
 
+    const friendTitle = friendGender === "girl" ? "Queen" : "King";
+    const playerNewcomer = playerGender === "female" ? "nayi" : "naye";
+    const playerMovingVerb = playerGender === "female" ? "rahi" : "rahe";
     const initialAiMessage = {
       sender: "ai",
       loveScore: 0,
@@ -65,31 +93,35 @@ router.post("/init", async (req, res) => {
         {
           type: "narration",
           speaker: "",
-          text: `Xavier's College mein aaj tumhara pehla din hai. Haath mein kitabein pakde tum main corridor se apni class ki taraf badh hi rahe ho ki saamne se aati Isha—college ki sabse brilliant, rich aur arrogant 'Queen'—aur uska possessive dost Vivaan tumhara raasta block kar lete hain. Isha tumhe upar se neeche tak ek cold, judging nazar se dekhti hai.`
+          text: `Xavier's College mein aaj tumhara pehla din hai. Haath mein kitabein pakde tum main corridor se apni class ki taraf badh hi ${playerMovingVerb} ho ki saamne ${cleanFriendName}, college ke brilliant, wealthy aur arrogant ${friendTitle}, tumhara raasta rok lete hain. ${cleanFriendName} tumhe upar se neeche tak ek cold, judging nazar se dekhte hain.`
         },
         {
           type: "dialogue",
-          speaker: "Isha",
+          speaker: cleanFriendName,
           text: `Excuse me? Dekh kar nahi chal sakte kya, Newcomer? Ya pehle din hi Xavier's ke corridor mein girne ka shauk hai?`
         },
         {
           type: "narration",
           speaker: "",
-          text: `Vivaan ek arrogant smirk ke saath aage aata hai aur tumhare kandhe ke paas khada ho jata hai.`
+          text: `Vivaan ek arrogant smirk ke saath aage aata hai aur tumhare kandhe ke paas khada ho jata hai, jaise tumhe challenge kar raha ho.`
         },
         {
           type: "dialogue",
           speaker: "Vivaan",
-          text: `Sun be चश्मिश, naya admission hai toh apni aukaat mein reh. Isha ke saamne aane ki galti dubara mat karna. Naam kya hai tera?`
+          text: `Sun, Xavier's mein ${playerNewcomer} ho toh apni aukaat mein reh. ${cleanFriendName} ke saamne aane ki galti dubara mat karna. Tumhara naam kya hai?`
         }
       ]
     };
 
     const newSession = await Session.create({
       playerName: cleanName,
+      playerGender,
+      friendName: cleanFriendName,
+      friendGender,
       love: 0,
       hate: 100,
-      characters: DEFAULT_CHARACTERS,
+      storySummary: `First day at Xavier's College. ${cleanName}, a newly admitted ${playerGender} student, is meeting ${cleanFriendName}, the ${friendTitle} of Xavier's College, while Vivaan challenges them in the main corridor.`,
+      characters: createDefaultCharacters(cleanFriendName, friendGender),
       messages: [initialAiMessage]
     });
 

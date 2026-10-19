@@ -10,6 +10,15 @@ const CHAT_EMOJIS = [
   "🔥", "✨", "⭐", "💫", "👏", "🙌", "👍", "👎",
   "🤝", "🙏", "💪", "👀", "🌹", "☕", "🎉", "💯"
 ];
+const PLAYER_GENDERS = [
+  { value: "male", symbol: "♂", label: "Man" },
+  { value: "female", symbol: "♀", label: "Woman" },
+  { value: "nonbinary", symbol: "⚧", label: "Non-binary" }
+];
+const FRIEND_GENDERS = [
+  { value: "boy", symbol: "♂", label: "Boy" },
+  { value: "girl", symbol: "♀", label: "Girl" }
+];
 
 const LEGAL_CONTENT = {
   terms: {
@@ -52,7 +61,7 @@ const LEGAL_CONTENT = {
       },
       {
         title: "Information the app stores",
-        text: "When you play, the app stores the player name you enter, your chat messages, story and AI replies, relationship scores, custom character details, and session timestamps in the MongoDB database configured by the operator. The app also stores the session identifier in this browser's local storage so it can resume your session."
+        text: "When you play, the app stores the player name and gender you choose, your AI friend's name and gender, your chat messages, story and AI replies, relationship scores, custom character details, and session timestamps in the MongoDB database configured by the operator. The app also stores the session identifier in this browser's local storage so it can resume your session."
       },
       {
         title: "How information is used and shared",
@@ -228,6 +237,9 @@ function renderUserMessageWithActions(rawText) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [playerNameInput, setPlayerNameInput] = useState("");
+  const [playerGenderInput, setPlayerGenderInput] = useState("");
+  const [friendGenderInput, setFriendGenderInput] = useState("girl");
+  const [friendNameInput, setFriendNameInput] = useState("Isha");
   const [messageInput, setMessageInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -318,13 +330,22 @@ export default function App() {
 
   const handleStartSession = async (e) => {
     e.preventDefault();
-    if (!playerNameInput.trim()) return;
+    if (!playerGenderInput) {
+      setError("Choose your gender using one of the symbols.");
+      return;
+    }
+    if (!playerNameInput.trim() || !friendNameInput.trim()) return;
     setLoading(true);
     setError("");
     try {
       const data = await requestSession(
         "/init",
-        jsonRequest("POST", { playerName: playerNameInput.trim() })
+        jsonRequest("POST", {
+          playerName: playerNameInput.trim(),
+          playerGender: playerGenderInput,
+          friendName: friendNameInput.trim(),
+          friendGender: friendGenderInput
+        })
       );
       localStorage.setItem("xaviers_session_id", data._id);
       setSession(data);
@@ -465,12 +486,16 @@ export default function App() {
               <p className="onboarding-story-subtitle">A Xavier&apos;s College story</p>
               <div className="onboarding-story-rule" />
               <p className="onboarding-story-description">
-                New campus. Unwritten rules. One queen who doesn&apos;t make
-                things easy.
+                New campus. Unwritten rules. A campus icon who doesn&apos;t
+                make things easy.
               </p>
               <div className="onboarding-character">
                 <span className="onboarding-character-dot" />
-                <span><strong>Isha</strong><br />Brilliant. Untouchable. Unpredictable.</span>
+                <span>
+                  <strong>{friendNameInput.trim() || "Your AI friend"}</strong>
+                  <br />
+                  {friendGenderInput === "girl" ? "Brilliant. Untouchable. Unpredictable." : "Brilliant. Fearless. Unpredictable."}
+                </span>
               </div>
             </div>
           </section>
@@ -501,6 +526,61 @@ export default function App() {
                 <p className="onboarding-input-note">
                   Your name will be used during your story.
                 </p>
+                <fieldset className="onboarding-choice-group" aria-label="Your gender">
+                  <legend>Your gender</legend>
+                  <div className="onboarding-symbol-options">
+                    {PLAYER_GENDERS.map((gender) => (
+                      <button
+                        key={gender.value}
+                        type="button"
+                        className={`onboarding-symbol-option${playerGenderInput === gender.value ? " is-selected" : ""}`}
+                        aria-label={gender.label}
+                        aria-pressed={playerGenderInput === gender.value}
+                        title={gender.label}
+                        onClick={() => {
+                          setPlayerGenderInput(gender.value);
+                          setError("");
+                        }}
+                      >
+                        {gender.symbol}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="onboarding-input-note">
+                    Choose the symbol that represents you.
+                  </span>
+                </fieldset>
+                <fieldset className="onboarding-choice-group" aria-label="Choose your AI friend">
+                  <legend>Choose your AI friend</legend>
+                  <div className="onboarding-symbol-options">
+                    {FRIEND_GENDERS.map((gender) => (
+                      <button
+                        key={gender.value}
+                        type="button"
+                        className={`onboarding-symbol-option${friendGenderInput === gender.value ? " is-selected" : ""}`}
+                        aria-label={gender.label}
+                        aria-pressed={friendGenderInput === gender.value}
+                        title={gender.label}
+                        onClick={() => setFriendGenderInput(gender.value)}
+                      >
+                        {gender.symbol}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <div className="onboarding-ai-name">
+                  <label htmlFor="ai-friend-name">Name your AI friend</label>
+                  <input
+                    id="ai-friend-name"
+                    type="text"
+                    required
+                    maxLength={40}
+                    autoComplete="off"
+                    placeholder="For example, Isha or Sandip"
+                    value={friendNameInput}
+                    onChange={(event) => setFriendNameInput(event.target.value)}
+                  />
+                </div>
                 <button type="submit" disabled={loading}>
                   <span>{loading ? "Preparing your story..." : "Begin your story"}</span>
                   <span aria-hidden="true">{loading ? "…" : "→"}</span>
@@ -545,13 +625,18 @@ export default function App() {
         {/* 1. CUSTOM PROJECT HEADER */}
         <header className="app-header bg-[#202c33] px-4 py-2.5 flex items-center justify-between border-b border-[#2a3942] z-10">
           <div className="header-identity flex items-center gap-3">
-            {/* Circular Avatar cropped onto Isha's face from the uploaded Xavier's image */}
             <div className="brand-avatar w-11 h-11 rounded-full overflow-hidden border-2 border-rose-500/70 shrink-0">
-              <img
-                src="/isha-scene.jpg"
-                alt="Isha"
-                className="w-full h-full object-cover object-[76%_22%] scale-150"
-              />
+              {session.friendGender === "girl" && (session.friendName || "Isha") === "Isha" ? (
+                <img
+                  src="/isha-scene.jpg"
+                  alt="Isha"
+                  className="w-full h-full object-cover object-[76%_22%] scale-150"
+                />
+              ) : (
+                <span className="friend-avatar-initial" aria-label={session.friendName || "AI friend"}>
+                  {(session.friendName || "I").charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -823,7 +908,7 @@ export default function App() {
 
           {loading && (
             <div className="bg-[#202c33] text-[#8696a0] text-xs italic px-4 py-2.5 rounded-2xl rounded-tl-none w-fit animate-pulse">
-              *Isha aur aas-paas ke log react kar rahe hain...*
+              *{session.friendName || "Your AI friend"} aur aas-paas ke log react kar rahe hain...*
             </div>
           )}
           <div ref={chatEndRef} />
@@ -1016,13 +1101,21 @@ export default function App() {
                 ✕
               </button>
               <div className="contact-avatar">
-                <img src="/isha-scene.jpg" alt="" />
+                {session.friendGender === "girl" && (session.friendName || "Isha") === "Isha" ? (
+                  <img src="/isha-scene.jpg" alt="" />
+                ) : (
+                  <span aria-hidden="true">
+                    {(session.friendName || "I").charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
-              <p className="contact-eyebrow">Xavier&apos;s College</p>
-              <h3 id="contact-title">Isha</h3>
+              <p className="contact-eyebrow">
+                {session.friendGender === "girl" ? "Queen" : "King"} of Xavier&apos;s College
+              </p>
+              <h3 id="contact-title">{session.friendName || "Isha"}</h3>
               <p className="contact-description">
-                Brilliant, wealthy, and fiercely arrogant. Isha rules the campus
-                and is at the center of your story.
+                Brilliant, confident, and impossible to ignore. Your AI friend
+                is at the center of your story.
               </p>
               <div className="contact-player">
                 <span>Your chat partner</span>
@@ -1058,7 +1151,11 @@ export default function App() {
               <p className="contact-eyebrow">AI-Classmate profile</p>
               <h3 id="profile-title">{session.playerName}</h3>
               <p className="profile-description">
-                Your player profile and current story progress.
+                {PLAYER_GENDERS.find((gender) => gender.value === session.playerGender)?.symbol ?? "⚧"}
+                {" "}· AI friend: {session.friendGender === "girl" ? "♀" : "♂"}{" "}
+                {session.friendName || "Isha"}
+                <br />
+                Your current story progress.
               </p>
               <dl className="profile-stats">
                 <div>
