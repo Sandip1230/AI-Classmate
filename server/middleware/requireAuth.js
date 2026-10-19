@@ -20,10 +20,11 @@ export function getSessionToken(req) {
   return /^[a-f\d]{64}$/i.test(token) ? token : "";
 }
 
-export async function requireAuth(req, res, next) {
+async function authenticateRequest(req, res, next, required) {
   try {
     const token = getSessionToken(req);
     if (!token) {
+      if (!required) return next();
       return res.status(401).json({ error: "Sign in with Google to continue." });
     }
 
@@ -33,6 +34,7 @@ export async function requireAuth(req, res, next) {
       expiresAt: { $gt: new Date() }
     }).select("userId");
     if (!authSession) {
+      if (!required) return next();
       return res.status(401).json({ error: "Your sign-in has expired. Please sign in again." });
     }
 
@@ -40,6 +42,7 @@ export async function requireAuth(req, res, next) {
       "_id email name picture"
     );
     if (!user) {
+      if (!required) return next();
       return res.status(401).json({ error: "Your account could not be found. Please sign in again." });
     }
 
@@ -49,4 +52,12 @@ export async function requireAuth(req, res, next) {
   } catch (error) {
     return next(error);
   }
+}
+
+export function requireAuth(req, res, next) {
+  return authenticateRequest(req, res, next, true);
+}
+
+export function optionalAuth(req, res, next) {
+  return authenticateRequest(req, res, next, false);
 }

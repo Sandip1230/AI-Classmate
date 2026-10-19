@@ -3,7 +3,12 @@ import express from "express";
 import { OAuth2Client } from "google-auth-library";
 import AuthSession from "../models/AuthSession.js";
 import User from "../models/User.js";
-import { AUTH_COOKIE_NAME, getSessionToken, requireAuth } from "../middleware/requireAuth.js";
+import {
+  AUTH_COOKIE_NAME,
+  getSessionToken,
+  optionalAuth,
+  requireAuth
+} from "../middleware/requireAuth.js";
 
 const defaultGoogleClient = new OAuth2Client();
 const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
@@ -109,8 +114,8 @@ export function createAuthRouter({
     }
   });
 
-  authRouter.get("/me", requireAuth, (req, res) => {
-    res.json({ user: serializeUser(req.user) });
+  authRouter.get("/me", optionalAuth, (req, res) => {
+    res.json({ user: req.user ? serializeUser(req.user) : null });
   });
 
   authRouter.post("/logout", async (req, res, next) => {

@@ -7,11 +7,19 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       port: 5173,
+      headers: {
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups"
+      },
       proxy: {
         "/api": {
           target: env.VITE_DEV_API_TARGET || "http://localhost:5000",
           changeOrigin: true
         }
+      }
+    },
+    preview: {
+      headers: {
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups"
       }
     }
   };

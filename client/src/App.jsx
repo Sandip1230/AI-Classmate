@@ -418,6 +418,8 @@ export default function App() {
   const messageInputRef = useRef(null);
   const googleButtonRef = useRef(null);
   const googleSignInHandler = useRef(null);
+  const authRestorePromiseRef = useRef(null);
+  const googleInitializedRef = useRef(false);
 
   const chatEndRef = useRef(null);
 
@@ -467,26 +469,25 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    const restoreSignIn = async () => {
-      try {
-        const config = await requestApi("/auth/config");
-        if (cancelled) return;
-        setGoogleClientId(config.googleClientId || "");
-        try {
-          const account = await requestApi("/auth/me");
-          if (!cancelled) setUser(account.user);
-        } catch (requestError) {
-          if (requestError.status !== 401) throw requestError;
-          if (!cancelled) setAuthLoading(false);
-        }
-      } catch (requestError) {
+    if (!authRestorePromiseRef.current) {
+      authRestorePromiseRef.current = Promise.all([
+        requestApi("/auth/config"),
+        requestApi("/auth/me")
+      ]);
+    }
+    authRestorePromiseRef.current
+      .then(([config, account]) => {
         if (!cancelled) {
-          setError(requestError.message);
-          setAuthLoading(false);
+          setGoogleClientId(config.googleClientId || "");
+          if (account.user) setUser(account.user);
+          else setAuthLoading(false);
         }
-      }
-    };
-    restoreSignIn();
+      })
+      .catch((requestError) => {
+        if (cancelled) return;
+        setError(requestError.message);
+        setAuthLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -534,14 +535,18 @@ export default function App() {
       if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) {
         return;
       }
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: (response) => {
-          if (response.credential) {
-            googleSignInHandler.current?.(response.credential);
+      if (!googleInitializedRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: (response) => {
+            if (response.credential) {
+              googleSignInHandler.current?.(response.credential);
+            }
           }
-        }
-      });
+        });
+        googleInitializedRef.current = true;
+      }
+      googleButtonRef.current.replaceChildren();
       window.google.accounts.id.renderButton(googleButtonRef.current, {
         type: "standard",
         theme: "outline",

@@ -34,6 +34,10 @@ test("serves a safe readiness response and security headers", async () => {
     assert.equal(body.database, "disconnected");
     assert.equal(response.headers.get("x-powered-by"), null);
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(
+      response.headers.get("cross-origin-opener-policy"),
+      "same-origin-allow-popups"
+    );
     assert.equal(Object.hasOwn(body, "uri"), false);
   });
 });
@@ -72,6 +76,8 @@ test("allows only configured browser origins", async () => {
 
 test("requires account authentication for private stories and reports sign-in configuration", async () => {
   await withServer(async (baseUrl) => {
+    const anonymousAccount = await fetch(`${baseUrl}/api/auth/me`);
+    const anonymousAccountBody = await anonymousAccount.json();
     const privateStories = await fetch(`${baseUrl}/api/session`);
     const createStory = await fetch(`${baseUrl}/api/session/init`, {
       method: "POST",
@@ -102,6 +108,8 @@ test("requires account authentication for private stories and reports sign-in co
     const unknown = await fetch(`${baseUrl}/api/unknown`);
     const unknownBody = await unknown.json();
 
+    assert.equal(anonymousAccount.status, 200);
+    assert.deepEqual(anonymousAccountBody, { user: null });
     assert.equal(privateStories.status, 401);
     assert.match((await privateStories.json()).error, /Sign in with Google/);
     assert.equal(createStory.status, 401);
@@ -110,7 +118,7 @@ test("requires account authentication for private stories and reports sign-in co
     assert.deepEqual(configBody, { googleClientId: null });
     assert.equal(unknown.status, 404);
     assert.deepEqual(unknownBody, { error: "Not found." });
-  });
+  }, { googleClientId: "" });
 });
 
 test("verifies Google credentials against the configured OAuth client", async () => {
