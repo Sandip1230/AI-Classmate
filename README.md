@@ -117,11 +117,14 @@ settings.
 
 ### 4. Add a Gemini API key
 
-After signing in and starting or opening a story, open **Chat options → Gemini
-API key** and save a key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-The app requests a key before it generates a story reply. The key is held in
-the current browser tab's `sessionStorage` and sent only with AI-generation
-requests; it is not stored in MongoDB or by the API after the request finishes.
+Configure `GEMINI_API_KEY` in `server/.env` for local development or in the
+backend host's environment settings. Alternatively, after signing in and
+starting or opening a story, open **Chat options → Gemini API key** and save an
+optional browser-specific key from
+[Google AI Studio](https://aistudio.google.com/app/apikey). A browser key
+overrides the server key for requests from that tab. It is held in the tab's
+`sessionStorage` and sent only with AI-generation requests; it is not stored in
+MongoDB.
 
 ## Environment variables
 
@@ -131,6 +134,7 @@ requests; it is not stored in MongoDB or by the API after the request finishes.
 | `PORT` | No | `5000` | API listen port. |
 | `MONGO_URI` | **Yes** | — | MongoDB connection URI. Restrict database access to the API host. |
 | `GOOGLE_CLIENT_ID` | For sign-in | Empty | Google Cloud Web application OAuth client ID. |
+| `GEMINI_API_KEY` | For AI replies | Empty | Optional server-side Gemini API key. A per-tab key set in Chat options overrides it. |
 | `GEMINI_MODEL` | No | `gemini-3.8-flash` | Gemini model used to generate story turns. |
 | `CLIENT_ORIGINS` | For browser access | Empty | Comma-separated, exact frontend origins allowed by CORS and write-request checks. Do not include paths or trailing slashes. |
 | `TRUST_PROXY` | No | `0` | Trusted proxy hop count or supported Express proxy setting. Set only for a known, trusted proxy configuration. |

@@ -19,15 +19,19 @@ function isValidSessionId(id) {
   return /^[a-f\d]{24}$/i.test(id);
 }
 
-function getUserApiKey(req, res) {
-  const apiKey = req.get("X-Gemini-Api-Key");
+export function getUserApiKey(req, res, serverApiKey = process.env.GEMINI_API_KEY) {
+  const requestApiKey = req.get("X-Gemini-Api-Key");
+  const apiKey =
+    typeof requestApiKey === "string" && requestApiKey.trim()
+      ? requestApiKey.trim()
+      : serverApiKey?.trim();
   if (typeof apiKey !== "string" || !apiKey.trim() || apiKey.length > 512) {
     res.status(400).json({
-      error: "Add a valid Gemini API key in Chat options before generating a reply."
+      error: "Configure GEMINI_API_KEY on the server or add a Gemini API key in Chat options."
     });
     return null;
   }
-  return apiKey.trim();
+  return apiKey;
 }
 
 export function getAiProviderError(error) {

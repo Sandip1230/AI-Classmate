@@ -305,7 +305,9 @@ function ApiKeyDialog({ currentKey, onClose, onSave, onRemove }) {
             <p className="legal-brand">AI-Classmate</p>
             <h2 id="api-key-title">Your Gemini API key</h2>
             <p className="legal-updated">
-              {currentKey ? "A key is saved in this browser tab." : "No key saved yet."}
+              {currentKey
+                ? "A browser key is saved for this tab and overrides the server key."
+                : "No browser override saved. The server key will be used if configured."}
             </p>
           </div>
           <button
@@ -338,9 +340,10 @@ function ApiKeyDialog({ currentKey, onClose, onSave, onRemove }) {
             </button>
           </div>
           <p className="api-key-note">
-            Your key is used for your Gemini requests, so usage counts against
-            your Google project. It is stored only in this browser tab and sent
-            to this app&apos;s server over the network for each AI reply. The
+            An optional browser key overrides the server&apos;s GEMINI_API_KEY
+            and usage counts against its Google project. It is stored only in
+            this browser tab and sent to this app&apos;s server for each AI reply.
+            Without a browser key, the server uses GEMINI_API_KEY if configured. The
             server does not save it. Only enter it on a deployment you trust;
             use HTTPS outside local development.
             {" "}
@@ -664,11 +667,6 @@ export default function App() {
   const handleSend = async (isSkip = false) => {
     if (loading) return;
     if (!isSkip && !messageInput.trim()) return;
-    if (!geminiApiKey) {
-      setApiKeyDialogOpen(true);
-      setError("Add your Gemini API key to generate a reply.");
-      return;
-    }
 
     const textToSend = messageInput;
     if (!isSkip) setMessageInput("");
@@ -691,11 +689,6 @@ export default function App() {
 
   const handleSaveEdit = async () => {
     if (!editDraft.trim() || loading) return;
-    if (!geminiApiKey) {
-      setApiKeyDialogOpen(true);
-      setError("Add your Gemini API key to regenerate a reply.");
-      return;
-    }
     setLoading(true);
     setError("");
     try {
@@ -714,11 +707,6 @@ export default function App() {
 
   const handleRegenerate = async () => {
     if (loading) return;
-    if (!geminiApiKey) {
-      setApiKeyDialogOpen(true);
-      setError("Add your Gemini API key to regenerate a reply.");
-      return;
-    }
     setLoading(true);
     setError("");
     try {

@@ -3,7 +3,7 @@ import { once } from "node:events";
 import test from "node:test";
 
 const { createApp } = await import("../app.js");
-const { getAiProviderError } = await import("../routes/chatRoutes.js");
+const { getAiProviderError, getUserApiKey } = await import("../routes/chatRoutes.js");
 const { parseRoleplayResponse } = await import("../services/geminiService.js");
 
 async function withServer(callback, appOptions = {}) {
@@ -208,6 +208,32 @@ test("explains common Gemini API failures without exposing provider error detail
     getAiProviderError({ status: 400, message: "API key secret-value" }).message,
     /secret-value/
   );
+});
+
+test("uses the server Gemini key when no browser override is sent", () => {
+  const response = {
+    statusCode: null,
+    body: null,
+    status(statusCode) {
+      this.statusCode = statusCode;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    }
+  };
+  const request = { get: () => undefined };
+
+  assert.equal(getUserApiKey(request, response, "  server-key  "), "server-key");
+  assert.equal(response.statusCode, null);
+  assert.equal(
+    getUserApiKey({ get: () => " browser-key " }, response, "server-key"),
+    "browser-key"
+  );
+  assert.equal(getUserApiKey(request, response, ""), null);
+  assert.equal(response.statusCode, 400);
+  assert.match(response.body.error, /GEMINI_API_KEY/);
 });
 
 test("parses Gemini roleplay JSON with code fences and trailing commas", () => {
