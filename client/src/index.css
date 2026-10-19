@@ -521,10 +521,11 @@
 
 .onboarding-shell {
   display: flex;
-  align-items: center;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  align-items: flex-start;
   justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
@@ -540,6 +541,7 @@
   grid-template-columns: minmax(0, 1.08fr) minmax(370px, 0.92fr);
   width: min(1080px, 100%);
   min-height: min(650px, calc(100dvh - 64px));
+  margin: auto;
   overflow: clip;
   background: #141522;
   border: 1px solid rgba(195, 175, 220, 0.2);
@@ -725,7 +727,10 @@
   align-items: stretch;
   justify-content: flex-start;
   gap: clamp(12px, 2vh, 22px);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   padding: clamp(14px, 2.5vh, 26px) clamp(16px, 5vw, 72px) 12px;
 }
 
@@ -1920,15 +1925,16 @@
 @media (max-width: 760px) {
   .onboarding-shell {
     align-items: flex-start;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     padding: clamp(12px, 4vw, 24px);
   }
 
   .login-landing {
-    height: auto;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     align-items: stretch;
     overflow-y: auto;
     padding: clamp(12px, 4vw, 24px);
