@@ -244,11 +244,7 @@ function getErrorMessage(error) {
   return error;
 }
 
-/**
- * Rule #2 Parser:
- * Splits a user's sent message into spoken text vs double-quoted actions ("...").
- * Any segment inside "..." is transformed into grey, cursive/italic text bounded by *...*
- */
+/** Renders quoted actions with a distinct style from spoken dialogue. */
 function renderUserMessageWithActions(rawText) {
   if (!rawText) return null;
   // Match either *"..."* (skip turn) or "..." (user typed double quotes)
@@ -264,11 +260,8 @@ function renderUserMessageWithActions(rawText) {
     if (isQuotedAction) {
       const cleanAction = part.replace(/^(\*"|")|("\*|")$/g, "").trim();
       return (
-        <span
-          key={idx}
-          className="block my-1 text-gray-300/80 italic font-serif tracking-wide"
-        >
-          *{cleanAction}*
+        <span key={idx} className="user-action">
+          {cleanAction}
         </span>
       );
     }
@@ -1148,7 +1141,6 @@ export default function App() {
     >
       {/* Main Responsive Mobile/Desktop Container */}
       <div className="app-frame relative w-full max-w-2xl h-full flex flex-col bg-[#0b141a] border-x border-[#222d34]">
-        {/* 1. CUSTOM PROJECT HEADER */}
         <header className="app-header bg-[#202c33] px-4 py-2.5 flex items-center justify-between border-b border-[#2a3942] z-10">
           <div className="header-identity flex items-center gap-3">
             <div className="brand-avatar w-11 h-11 rounded-full overflow-hidden border-2 border-rose-500/70 shrink-0">
@@ -1167,21 +1159,30 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="brand-title font-bold text-[16px] tracking-tight text-white">
-                  AI-CLASSMATE
+                  {session.friendName || "Your AI friend"}
                 </h2>
                 <span className="player-badge text-[11px] px-2 py-0.5 rounded bg-[#111b21] text-[#8696a0]">
-                  Player: {session.playerName}
+                  Playing as {session.playerName}
                 </span>
               </div>
-              {/* Global Constant Love & Hate Bar */}
-              <div className="score-row flex items-center gap-3 text-xs mt-0.5">
-                <span className="text-rose-400 font-semibold">
-                  ❤️ Love: {session.love}/100
-                </span>
-                <span className="text-gray-500">|</span>
-                <span className="text-amber-400 font-semibold">
-                  🔥 Hate: {session.hate}/100
-                </span>
+              <p className="story-subtitle">Crown of Thorns <span aria-hidden="true">·</span> Xavier&apos;s College</p>
+              <div className="score-row" aria-label="Relationship with your story characters">
+                <div className="relationship-score affinity-score" aria-label={`Affinity ${session.love} out of 100`}>
+                  <span aria-hidden="true">♡</span>
+                  <span>Affinity</span>
+                  <strong>{session.love}</strong>
+                  <span className="relationship-track" aria-hidden="true">
+                    <span style={{ width: `${session.love}%` }} />
+                  </span>
+                </div>
+                <div className="relationship-score tension-score" aria-label={`Tension ${session.hate} out of 100`}>
+                  <span aria-hidden="true">⌁</span>
+                  <span>Tension</span>
+                  <strong>{session.hate}</strong>
+                  <span className="relationship-track" aria-hidden="true">
+                    <span style={{ width: `${session.hate}%` }} />
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1193,13 +1194,13 @@ export default function App() {
               className="cast-button stories-button"
               title="View your saved stories"
             >
-              Stories ({savedSessions.length})
+              Stories <span className="header-count">{savedSessions.length}</span>
             </button>
             <button
               onClick={() => setDrawerOpen(true)}
               className="cast-button px-3 py-1.5 rounded-lg bg-[#111b21] hover:bg-[#2a3942] text-xs font-medium text-[#00a884] border border-[#2a3942] transition"
             >
-              👥 Cast ({session.characters?.length ?? 0})
+              👥 Cast <span className="header-count">{session.characters?.length ?? 0}</span>
             </button>
             <div className="settings-menu" ref={menuRef}>
               <button
@@ -1329,14 +1330,15 @@ export default function App() {
           </div>
         </header>
 
-        {/* 2. WHATSAPP CLASSIC DARK CHAT STREAM */}
         <main
-          className="story-stream flex-1 overflow-y-auto p-4 space-y-3"
+          className="story-stream flex-1 overflow-y-auto"
           style={{
             "--chat-font-size": fontSize,
             backgroundColor: "#0b141a",
             backgroundImage:
-              theme === "light" ? undefined : "url('/chat-background.png')",
+              theme === "light"
+                ? undefined
+                : "linear-gradient(rgba(12, 13, 22, 0.84), rgba(12, 13, 22, 0.88)), url('/chat-background.png')",
             backgroundPosition: "center",
             backgroundSize: theme === "light" ? "24px 24px" : "cover"
           }}
@@ -1349,7 +1351,7 @@ export default function App() {
             if (isUser) {
               return (
                 <div key={index} className="message-row user-row flex flex-col items-end">
-                  <div className="message-bubble user-bubble max-w-[82%] bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tr-none px-3.5 py-2 shadow-md text-[15px] leading-snug">
+                  <div className="message-bubble user-bubble">
                     {isEditingLast && isLastUserMsg ? (
                       <div className="space-y-2 min-w-[240px]">
                         <textarea
@@ -1385,7 +1387,7 @@ export default function App() {
                         setEditDraft(msg.rawInput);
                         setIsEditingLast(true);
                       }}
-                      className="text-[11px] text-[#8696a0] hover:text-white mt-1 mr-1 flex items-center gap-1"
+                      className="message-action edit-action"
                     >
                       ✏️ Edit last message
                     </button>
@@ -1394,66 +1396,42 @@ export default function App() {
               );
             }
 
-            // AI / Multi-Character Message Bubble
             return (
               <div key={index} className="message-row ai-row flex flex-col items-start">
-                <div className="message-bubble ai-bubble max-w-[88%] bg-[#202c33] text-[#e9edef] rounded-2xl rounded-tl-none px-4 py-3 shadow-md space-y-2.5 border border-[#2a3942]/60">
-                  {/* Pinned Constant Love & Hate Header Inside Every Turn */}
-                  <div className="flex items-center justify-between border-b border-[#2a3942] pb-1.5 text-xs font-semibold">
-                    <div className="flex items-center gap-4">
-                      <span className="text-rose-400">
-                        ❤️ Love: {msg.loveScore}/100
-                      </span>
-                      <span className="text-red-400">
-                        💔 Hate: {msg.hateScore}/100
-                      </span>
-                    </div>
-                    {msg.loveDelta !== 0 && (
-                      <span
-                        className={`text-[11px] px-1.5 py-0.5 rounded ${
-                          msg.loveDelta > 0
-                            ? "bg-emerald-950 text-emerald-400"
-                            : "bg-red-950 text-red-400"
-                        }`}
-                      >
-                        {msg.loveDelta > 0 ? `+${msg.loveDelta} Love` : `${msg.loveDelta} Love`}
-                      </span>
-                    )}
-                  </div>
+                <div className="message-bubble ai-bubble">
+                  {msg.loveDelta !== 0 && (
+                    <span className={`turn-change${msg.loveDelta > 0 ? " is-positive" : " is-negative"}`}>
+                      {msg.loveDelta > 0 ? `Affinity +${msg.loveDelta}` : `Affinity ${msg.loveDelta}`}
+                    </span>
+                  )}
 
-                  {/* Narration (*...*) & Multi-Character Dialogues */}
                   {(Array.isArray(msg.blocks) ? msg.blocks : []).map((block, bIdx) =>
                     block.type === "narration" ? (
                       <p
                         key={bIdx}
-                        className="scene-narration text-[#9aa6af] italic font-serif text-[14.5px] leading-relaxed"
+                        className="scene-narration"
                       >
-                        *{block.text}*
+                        {block.text}
                       </p>
                     ) : (
-                      <p key={bIdx} className="scene-dialogue text-[#e9edef] text-[15px] leading-snug">
+                      <p key={bIdx} className="scene-dialogue">
                         <strong
-                          className={
-                            block.speaker?.toLowerCase() === "isha"
-                              ? "text-rose-400"
-                              : "text-sky-400"
-                          }
+                          className={`speaker-name${block.speaker?.toLowerCase() === "isha" ? " is-lead" : ""}`}
                         >
-                          {block.speaker}:
+                          {block.speaker}
                         </strong>{" "}
-                        &ldquo;{block.text}&rdquo;
+                        <span>{block.text}</span>
                       </p>
                     )
                   )}
                 </div>
 
-                {/* Rule #9: Regenerate Last AI Response Button */}
                 {isLastAiMsg && !loading && (
                   <button
                     onClick={handleRegenerate}
-                    className="text-[11px] text-[#8696a0] hover:text-[#00a884] mt-1 ml-1 flex items-center gap-1"
+                    className="message-action regenerate-action"
                   >
-                    🔄 Regenerate response
+                    Regenerate reply
                   </button>
                 )}
               </div>
@@ -1461,40 +1439,37 @@ export default function App() {
           })}
 
           {loading && (
-            <div className="bg-[#202c33] text-[#8696a0] text-xs italic px-4 py-2.5 rounded-2xl rounded-tl-none w-fit animate-pulse">
-              *{session.friendName || "Your AI friend"} aur aas-paas ke log react kar rahe hain...*
+            <div className="typing-indicator" role="status" aria-live="polite">
+              <span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
+              <span>{session.friendName || "Your AI friend"} is replying</span>
             </div>
           )}
           <div ref={chatEndRef} />
         </main>
 
-        {/* 3. BOTTOM INPUT BAR + DOUBLE-QUOTE ACTION HINT + SKIP BUTTON */}
         <footer className="chat-footer bg-[#202c33] px-3 py-2 border-t border-[#2a3942]">
           {error && <p className="error-banner" role="alert">{error}</p>}
           <div className="composer-hint text-[11px] text-[#8696a0] mb-1.5 px-1 flex justify-between">
-            <span>
-              💡 Tip: Put actions in <code className="text-gray-300">&quot;double quotes&quot;</code> to send as{" "}
-              <em className="text-gray-400">*italic actions*</em>
-            </span>
+            <span>Write what you say or do</span>
+            <span className="composer-hint-format">Dialogue is plain text <span aria-hidden="true">·</span> actions go in &quot;quotes&quot;</span>
           </div>
 
           <div className="composer-row flex items-center gap-2">
-            {/* Rule #8: Skip Button for next action/conversation from other side */}
             <button
               type="button"
               onClick={() => handleSend(true)}
               disabled={loading}
-              title="Skip your turn and let Isha / NPCs continue the scene"
+              title="Let the other characters continue"
               className="skip-button px-3 py-2.5 rounded-full bg-[#111b21] hover:bg-[#2a3942] text-xs font-semibold text-amber-400 border border-[#2a3942] shrink-0 transition"
             >
-              ⏭️ Skip
+              Skip turn
             </button>
 
             <div className="composer-input-wrap" ref={emojiPickerRef}>
               <input
                 ref={messageInputRef}
                 type="text"
-                placeholder='Type dialogue or "action in double quotes"...'
+                placeholder="Say something…"
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1553,9 +1528,10 @@ export default function App() {
               type="button"
               onClick={() => handleSend(false)}
               disabled={loading || !messageInput.trim()}
+              aria-label="Send message"
               className="send-button w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#029072] disabled:opacity-40 text-[#111b21] flex items-center justify-center font-bold shrink-0 transition"
             >
-              ➤
+              <span aria-hidden="true">↑</span>
             </button>
           </div>
         </footer>
