@@ -20,6 +20,7 @@ AI-generated story turns.
 - Supply a personal Google AI Studio Gemini API key when generating replies.
 - Choose chat appearance, including the dark chat wallpaper.
 
+
 ## Project layout
 
 ```text
