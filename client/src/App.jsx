@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api/session").replace(/\/+$/, "");
+const API_BASE = (
+  __VERCEL_DEPLOYMENT__
+    ? "/api/session"
+    : import.meta.env.VITE_API_BASE_URL || "/api/session"
+).replace(/\/+$/, "");
 const API_ROOT = API_BASE.replace(/\/session$/, "");
 const CHAT_EMOJIS = [
   "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣",

@@ -5,6 +5,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
     plugins: [react()],
+    define: {
+      __VERCEL_DEPLOYMENT__: JSON.stringify(process.env.VERCEL === "1")
+    },
     server: {
       port: 5173,
       headers: {

@@ -242,11 +242,10 @@ API service.
    ```
 
 For Vercel, `client/vercel.json` proxies `/api/*` requests to the configured
-Render API, keeping browser authentication same-origin. Leave
-`VITE_API_BASE_URL` unset (or set it to `/api/session`) in the Vercel project;
-an absolute API URL bypasses this proxy and may cause browsers to block the
-cross-site sign-in cookie. If you use a different hosting setup, configure
-`VITE_API_BASE_URL` in the frontend build and set `CLIENT_ORIGINS` on the API.
+Render API, keeping browser authentication same-origin. Vercel builds always
+use this proxy, even if `VITE_API_BASE_URL` is set in the project environment.
+For other hosting setups, configure `VITE_API_BASE_URL` in the frontend build
+and set `CLIENT_ORIGINS` on the API.
 Production sign-in cookies are `Secure` and use `SameSite=None`, so a direct
 cross-site deployment requires HTTPS and a browser that permits the cookie. A
 same-site deployment or proxy is more compatible with browser cookie
