@@ -14,11 +14,16 @@ import {
 const defaultGoogleClient = new OAuth2Client();
 const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 
-function getCookieOptions(nodeEnv) {
+export function getCookieOptions(nodeEnv, req) {
+  const secure =
+    nodeEnv === "production" ||
+    req.secure ||
+    req.get("Origin")?.startsWith("https://");
+
   return {
     httpOnly: true,
-    secure: nodeEnv === "production",
-    sameSite: nodeEnv === "production" ? "none" : "lax",
+    secure,
+    sameSite: secure ? "none" : "lax",
     path: "/api",
     maxAge: SESSION_LIFETIME_MS
   };
@@ -108,7 +113,7 @@ export function createAuthRouter({
         expiresAt
       });
 
-      res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions(nodeEnv));
+      res.cookie(AUTH_COOKIE_NAME, token, getCookieOptions(nodeEnv, req));
       return res.json({ user: serializeUser(user) });
     } catch (error) {
       return next(error);
@@ -128,10 +133,10 @@ export function createAuthRouter({
         });
       }
     } catch (error) {
-      res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions(nodeEnv));
+      res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions(nodeEnv, req));
       return next(error);
     }
-    res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions(nodeEnv));
+    res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions(nodeEnv, req));
     return res.json({ ok: true });
   });
 
@@ -140,7 +145,7 @@ export function createAuthRouter({
       await Session.deleteMany({ ownerId: req.user._id });
       await AuthSession.deleteMany({ userId: req.user._id });
       await User.deleteOne({ _id: req.user._id });
-      res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions(nodeEnv));
+      res.clearCookie(AUTH_COOKIE_NAME, getCookieOptions(nodeEnv, req));
       return res.json({ ok: true });
     } catch (error) {
       return next(error);

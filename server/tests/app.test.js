@@ -3,8 +3,35 @@ import { once } from "node:events";
 import test from "node:test";
 
 const { createApp } = await import("../app.js");
+const { getCookieOptions } = await import("../routes/authRoutes.js");
 const { getAiProviderError, getUserApiKey } = await import("../routes/chatRoutes.js");
 const { parseRoleplayResponse } = await import("../services/geminiService.js");
+
+test("uses cross-site-compatible sign-in cookies for HTTPS browser origins", () => {
+  const httpRequest = {
+    secure: false,
+    get: () => "http://localhost:5173"
+  };
+  const httpsRequest = {
+    secure: false,
+    get: () => "https://classmate.example.com"
+  };
+
+  assert.deepEqual(
+    {
+      secure: getCookieOptions("development", httpRequest).secure,
+      sameSite: getCookieOptions("development", httpRequest).sameSite
+    },
+    { secure: false, sameSite: "lax" }
+  );
+  assert.deepEqual(
+    {
+      secure: getCookieOptions("development", httpsRequest).secure,
+      sameSite: getCookieOptions("development", httpsRequest).sameSite
+    },
+    { secure: true, sameSite: "none" }
+  );
+});
 
 async function withServer(callback, appOptions = {}) {
   const server = createApp({

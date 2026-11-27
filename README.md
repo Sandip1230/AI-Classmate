@@ -250,7 +250,8 @@ cross-site sign-in cookie. If you use a different hosting setup, configure
 Production sign-in cookies are `Secure` and use `SameSite=None`, so a direct
 cross-site deployment requires HTTPS and a browser that permits the cookie. A
 same-site deployment or proxy is more compatible with browser cookie
-restrictions.
+restrictions. HTTPS browser origins receive these cookie attributes even if
+`NODE_ENV` is not set to `production`; local HTTP development keeps `SameSite=Lax`.
 
 `GET /api/health` returns HTTP 200 when MongoDB is connected and HTTP 503 when
 it is not. The API also uses Helmet security headers, request-size limits,
